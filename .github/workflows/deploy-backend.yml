@@ -1,4 +1,4 @@
-name: CI — Backend
+name: Deploy Backend to HuggingFace
 
 on:
   push:
@@ -8,21 +8,31 @@ on:
       - '.github/workflows/deploy-backend.yml'
 
 jobs:
-  ci:
+  deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          fetch-depth: 0
+          lfs: true
 
-      - name: Install dependencies
-        run: pip install -r backend/requirements.txt
+      - name: Push backend to HuggingFace Space
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          git config --global user.email "ci@argus"
+          git config --global user.name "ARGUS CI"
 
-      - name: Check syntax
-        run: python -m py_compile backend/app/main.py && echo "✓ syntax OK"
+          # Clone the HuggingFace space
+          git clone https://argusdelfabro:$HF_TOKEN@huggingface.co/spaces/argusdelfabro/argus-api hf_space
 
-  # Koyeb handles deploy automatically on every push to main.
-  # No deploy hook needed here — configured directly in Koyeb dashboard.
+          # Sync backend folder into the space
+          rsync -av --delete \
+            --exclude='.git' \
+            backend/ hf_space/
+
+          # Push to HuggingFace
+          cd hf_space
+          git add -A
+          git diff --cached --quiet || git commit -m "deploy: update from GitHub ${{ github.sha }}"
+          git push
