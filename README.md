@@ -3,10 +3,10 @@
 Sistema web de reconciliación bancaria para Delfabro.
 
 ## Stack
-- **Backend:** FastAPI (Python) → Render
+- **Backend:** FastAPI (Python) → Koyeb (free, no credit card, always-on)
 - **Frontend:** Next.js → Vercel
 - **Database:** Supabase (PostgreSQL + Storage)
-- **CI/CD:** GitHub Actions
+- **CI/CD:** GitHub Actions + Koyeb auto-deploy
 
 ## Setup local
 
@@ -27,14 +27,15 @@ npm run dev
 ```
 
 ## Deploy
-Push to `main` → GitHub Actions deploys automatically.
+- **Backend:** Push to `main` → Koyeb auto-deploys (configured in Koyeb dashboard)
+- **Frontend:** Push to `main` → Vercel auto-deploys
 
 ## Supabase Setup
 Run `supabase/migrations/20260523000000_initial.sql` in Supabase SQL editor.
 
 ## Environment Variables
 
-### Backend (Render)
+### Backend (Koyeb)
 | Var | Description |
 |-----|-------------|
 | SUPABASE_URL | Your Supabase project URL |

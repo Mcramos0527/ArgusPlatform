@@ -1,4 +1,4 @@
-name: Deploy Backend to Render
+name: CI — Backend
 
 on:
   push:
@@ -8,7 +8,7 @@ on:
       - '.github/workflows/deploy-backend.yml'
 
 jobs:
-  deploy:
+  ci:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -21,8 +21,8 @@ jobs:
       - name: Install dependencies
         run: pip install -r backend/requirements.txt
 
-      - name: Trigger Render Deploy
-        env:
-          RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
-        run: |
-          curl -X POST "$RENDER_DEPLOY_HOOK"
+      - name: Check syntax
+        run: python -m py_compile backend/app/main.py && echo "✓ syntax OK"
+
+  # Koyeb handles deploy automatically on every push to main.
+  # No deploy hook needed here — configured directly in Koyeb dashboard.
