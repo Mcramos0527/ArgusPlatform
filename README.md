@@ -347,7 +347,7 @@ Todo es automático via GitHub Actions en cada push a `main`.
 
 | Rol | Contacto |
 |---|---|
-| Desarrollo | Manuel Ramos |
+| Desarrollo | Max Ramos |
 | Cliente | Delfabro Group |
 
 ---
