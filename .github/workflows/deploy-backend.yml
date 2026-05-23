@@ -24,7 +24,7 @@ jobs:
           git config --global user.name "ARGUS CI"
 
           # Clone the HuggingFace space
-          git clone https://Argusdelfabro2026:$HF_TOKEN@huggingface.co/spaces/Argusdelfabro2026/argus-api hf_space
+          git clone https://Argusdelfabro:$HF_TOKEN@huggingface.co/spaces/Argusdelfabro/argus-api hf_space
 
           # Sync backend folder into the space
           rsync -av --delete \
