@@ -7,6 +7,9 @@ on:
       - 'backend/**'
       - '.github/workflows/deploy-backend.yml'
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -19,6 +22,12 @@ jobs:
         run: |
           git config --global user.email "ci@argus"
           git config --global user.name "ARGUS CI"
+
+          # Verify HF_TOKEN is set
+          if [ -z "$HF_TOKEN" ]; then
+            echo "ERROR: HF_TOKEN secret is not set or empty"
+            exit 1
+          fi
 
           # Clone the HuggingFace space
           git clone https://Argusdelfabro:$HF_TOKEN@huggingface.co/spaces/Argusdelfabro/argus-api hf_space
