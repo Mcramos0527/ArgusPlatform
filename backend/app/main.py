@@ -39,6 +39,23 @@ def health():
     return {"status": "ok", "version": "3.0.0"}
 
 
+@app.get("/debug/db", tags=["meta"])
+def debug_db():
+    """Temporary debug endpoint — tests Supabase insert."""
+    import uuid, traceback
+    from app.core.supabase import supabase
+    run_id = str(uuid.uuid4())
+    try:
+        result = supabase.table("runs").insert({
+            "id": run_id,
+            "status": "debug_test",
+        }).execute()
+        supabase.table("runs").delete().eq("id", run_id).execute()
+        return {"ok": True, "inserted": run_id}
+    except Exception as e:
+        return {"ok": False, "error": str(e), "traceback": traceback.format_exc()}
+
+
 @app.get("/", tags=["meta"])
 def root():
     return {"app": "ARGUS API", "version": "3.0.0", "docs": "/docs"}
