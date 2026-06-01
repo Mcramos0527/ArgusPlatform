@@ -121,7 +121,6 @@ async def proceso_paso1(
     queries.create_run({
         "id":                 run_id,
         "status":             "running",
-        "steps_completed":    0,
         "sheets_processed":   0,
         "transactions_total": 0,
     })
@@ -206,7 +205,7 @@ async def proceso_paso1(
         # Update run record
         queries.update_run(run_id, {
             "status":             "step1_complete",
-            "steps_completed":    1,
+            "steps_completed":    [1],
             "sheets_processed":   result.sheets_processed,
             "transactions_total": result.transactions_total,
         })
@@ -326,7 +325,7 @@ async def proceso_paso2(
 
         queries.update_run(run_id, {
             "status":          "step2_complete",
-            "steps_completed": 2,
+            "steps_completed": [1, 2],
         })
 
         yield _progress_event(100)
@@ -441,7 +440,7 @@ async def proceso_paso3(
 
         queries.update_run(run_id, {
             "status":          "complete",
-            "steps_completed": 3,
+            "steps_completed": [1, 2, 3],
         })
 
         yield _progress_event(100)
