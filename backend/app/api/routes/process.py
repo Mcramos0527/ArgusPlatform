@@ -178,15 +178,9 @@ async def proceso_paso1(
             return
 
         yield _progress_event(70)
-        yield _log_event("💾 Guardando transacciones en base de datos...")
-
-        # Save transactions to DB
-        queries.save_transactions(run_id, result.transactions)
-
-        yield _progress_event(85)
         yield _log_event("📤 Subiendo archivo de salida a Supabase Storage...")
 
-        # Find output Excel and upload it
+        # Upload Excel FIRST — so download works even if DB save fails
         output_files = list(Path(output_folder).glob("argus_movimientos_*.xlsx"))
         file_url = ""
         if output_files:
@@ -202,13 +196,27 @@ async def proceso_paso1(
                 logger.warning(f"Output upload failed: {e}")
                 yield _log_event(f"  ⚠ Storage upload failed: {e}")
 
+        yield _progress_event(85)
+        yield _log_event("💾 Guardando transacciones en base de datos...")
+
+        # Save transactions — non-critical, errors don't block the download
+        try:
+            queries.save_transactions(run_id, result.transactions)
+            yield _log_event(f"  ✓ {result.transactions_total} transacciones guardadas")
+        except Exception as e:
+            logger.warning(f"DB save transactions failed (non-fatal): {e}")
+            yield _log_event(f"  ⚠ DB save failed (non-fatal): {e}")
+
         # Update run record
-        queries.update_run(run_id, {
-            "status":             "step1_complete",
-            "steps_completed":    [1],
-            "sheets_processed":   result.sheets_processed,
-            "transactions_total": result.transactions_total,
-        })
+        try:
+            queries.update_run(run_id, {
+                "status":             "step1_complete",
+                "steps_completed":    [1],
+                "sheets_processed":   result.sheets_processed,
+                "transactions_total": result.transactions_total,
+            })
+        except Exception as e:
+            logger.warning(f"DB update_run failed (non-fatal): {e}")
 
         yield _progress_event(100)
         yield _done_event(run_id, file_url)
