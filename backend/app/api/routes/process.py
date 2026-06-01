@@ -308,14 +308,9 @@ async def proceso_paso2(
             return
 
         yield _progress_event(70)
-        yield _log_event("💾 Guardando líneas de conciliación...")
-
-        if hasattr(result, "recon_lines") and result.recon_lines:
-            queries.save_reconciliation(run_id, result.recon_lines)
-
-        yield _progress_event(85)
         yield _log_event("📤 Subiendo reporte de conciliación...")
 
+        # Upload Excel FIRST
         output_files = list(Path(output_folder).glob("argus_conciliacion_*.xlsx"))
         file_url = ""
         if output_files:
@@ -331,10 +326,25 @@ async def proceso_paso2(
                 logger.warning(f"Output upload failed: {e}")
                 yield _log_event(f"  ⚠ Storage upload failed: {e}")
 
-        queries.update_run(run_id, {
-            "status":          "step2_complete",
-            "steps_completed": [1, 2],
-        })
+        yield _progress_event(85)
+        yield _log_event("💾 Guardando líneas de conciliación...")
+
+        # Save to DB — non-critical
+        try:
+            if hasattr(result, "recon_lines") and result.recon_lines:
+                queries.save_reconciliation(run_id, result.recon_lines)
+                yield _log_event(f"  ✓ {len(result.recon_lines)} líneas guardadas")
+        except Exception as e:
+            logger.warning(f"DB save reconciliation failed (non-fatal): {e}")
+            yield _log_event(f"  ⚠ DB save failed (non-fatal): {e}")
+
+        try:
+            queries.update_run(run_id, {
+                "status":          "step2_complete",
+                "steps_completed": [1, 2],
+            })
+        except Exception as e:
+            logger.warning(f"DB update_run failed (non-fatal): {e}")
 
         yield _progress_event(100)
         yield _done_event(run_id, file_url)
@@ -420,14 +430,9 @@ async def proceso_paso3(
             return
 
         yield _progress_event(70)
-        yield _log_event("💾 Guardando entradas de Caja...")
-
-        if result.caja_entries:
-            queries.save_caja_entries(run_id, result.caja_entries)
-
-        yield _progress_event(85)
         yield _log_event("📤 Subiendo export de Caja...")
 
+        # Upload Excel FIRST
         output_files = list(Path(output_folder).glob("argus_export_caja_*.xlsx"))
         file_url = ""
         if output_files:
@@ -442,6 +447,18 @@ async def proceso_paso3(
             except Exception as e:
                 logger.warning(f"Output upload failed: {e}")
                 yield _log_event(f"  ⚠ Storage upload failed: {e}")
+
+        yield _progress_event(85)
+        yield _log_event("💾 Guardando entradas de Caja...")
+
+        # Save to DB — non-critical
+        try:
+            if result.caja_entries:
+                queries.save_caja_entries(run_id, result.caja_entries)
+                yield _log_event(f"  ✓ {len(result.caja_entries)} entradas guardadas")
+        except Exception as e:
+            logger.warning(f"DB save caja failed (non-fatal): {e}")
+            yield _log_event(f"  ⚠ DB save failed (non-fatal): {e}")
 
         # Clean up processor from memory — run is fully complete
         _processors.pop(run_id, None)
