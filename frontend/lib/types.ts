@@ -74,10 +74,21 @@ export interface SSEProgressEvent {
   pct: number;
 }
 
+export interface RunStats {
+  total: number;
+  cobros: number;
+  pagos: number;
+  internos: number;
+  sin_clasificar: number;
+  alerts: number;
+  banks: number;
+}
+
 export interface SSEDoneEvent {
   type: 'done';
   run_id: string;
   file_url: string;
+  stats?: RunStats;
 }
 
 export interface SSEErrorEvent {

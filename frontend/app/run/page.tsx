@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useRef } from 'react';
-import type { LogLine, StepState, SSEEvent } from '@/lib/types';
+import type { LogLine, StepState, SSEEvent, RunStats } from '@/lib/types';
 import {
   streamPaso1,
   streamPaso2,
@@ -10,6 +10,7 @@ import {
 } from '@/lib/api';
 import TerminalLog from '@/components/TerminalLog';
 import StepPanel from '@/components/StepPanel';
+import RunSummary from '@/components/RunSummary';
 
 let lineCounter = 0;
 
@@ -68,6 +69,7 @@ export default function RunPage() {
 
   const [runId, setRunId] = useState<string | null>(null);
   const [isRunning, setIsRunning] = useState(false);
+  const [runStats, setRunStats] = useState<RunStats | null>(null);
 
   const cancelRef = useRef<(() => void) | null>(null);
 
@@ -96,6 +98,7 @@ export default function RunPage() {
       } else if (event.type === 'done') {
         const rid = event.run_id;
         setRunId(rid);
+        if (event.stats) setRunStats(event.stats);
         setStep1((s) => ({ ...s, status: 'done', progress: 100 }));
         setStep2((s) => ({ ...s, status: 'idle' }));
         setIsRunning(false);
@@ -194,6 +197,7 @@ export default function RunPage() {
     setStep3({ ...INITIAL_LOCKED });
     setRunId(null);
     setIsRunning(false);
+    setRunStats(null);
     setLogLines([
       makeLogLine('root@argus:~/run$ ./argus --reset'),
       makeLogLine('Pipeline reset — listo para nuevo run'),
@@ -285,8 +289,8 @@ export default function RunPage() {
         )}
       </aside>
 
-      {/* ── Right: Terminal log ──────────────────────────────────────────── */}
-      <section className="flex-1 p-3 min-h-0 min-w-0 flex flex-col">
+      {/* ── Right: Terminal log + Run Summary ───────────────────────────── */}
+      <section className="flex-1 p-3 min-h-0 min-w-0 flex flex-col gap-3">
         <TerminalLog
           lines={logLines}
           isRunning={isRunning}
@@ -296,6 +300,9 @@ export default function RunPage() {
               : 'root@argus:~/run$ ./argus --interactive'
           }
         />
+        {runStats && runId && (
+          <RunSummary stats={runStats} runId={runId} />
+        )}
       </section>
     </div>
   );

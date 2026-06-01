@@ -82,8 +82,11 @@ def _progress_event(pct: int) -> str:
     return json.dumps({"type": "progress", "pct": pct})
 
 
-def _done_event(run_id: str, file_url: str) -> str:
-    return json.dumps({"type": "done", "run_id": run_id, "file_url": file_url})
+def _done_event(run_id: str, file_url: str, stats: dict = None) -> str:
+    payload = {"type": "done", "run_id": run_id, "file_url": file_url}
+    if stats:
+        payload["stats"] = stats
+    return json.dumps(payload)
 
 
 def _error_event(msg: str) -> str:
@@ -218,8 +221,21 @@ async def proceso_paso1(
         except Exception as e:
             logger.warning(f"DB update_run failed (non-fatal): {e}")
 
+        # Compute stats for the run summary panel
+        stats = {}
+        if result.transactions:
+            stats = {
+                "total":          result.transactions_total,
+                "cobros":         sum(1 for tx in result.transactions if tx.tipo_movimiento == "COBRO"),
+                "pagos":          sum(1 for tx in result.transactions if tx.tipo_movimiento == "PAGO"),
+                "internos":       sum(1 for tx in result.transactions if tx.tipo_movimiento == "INTERNO"),
+                "sin_clasificar": sum(1 for tx in result.transactions if tx.tipo_movimiento == "SIN CLASIFICAR"),
+                "alerts":         sum(1 for tx in result.transactions if tx.alerta),
+                "banks":          result.sheets_processed,
+            }
+
         yield _progress_event(100)
-        yield _done_event(run_id, file_url)
+        yield _done_event(run_id, file_url, stats)
 
     return EventSourceResponse(event_generator())
 
