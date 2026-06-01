@@ -14,9 +14,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="es">
-      <body className="min-h-screen bg-terminal-bg text-terminal-white font-mono flex flex-col">
+      <body className="h-screen overflow-hidden bg-terminal-bg text-terminal-white font-mono flex flex-col">
         <NavBar />
-        <main className="flex-1 flex flex-col min-h-0">{children}</main>
+        <main className="flex-1 flex flex-col overflow-hidden min-h-0">{children}</main>
       </body>
     </html>
   );
