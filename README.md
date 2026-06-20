@@ -1,102 +1,102 @@
-# ARGUS Platform — Wave 3
+﻿# ARGUS Platform — Wave 3
 
-> **Sistema de Reconciliación Bancaria Automatizada**  
+> **Automated Bank Reconciliation System**  
 > Delfabro Group · v3.0.0 · 2026
 
 ```
-■ ARGUS v3.0.0 ■ RECONCILIACIÓN BANCARIA ■ DELFABRO GROUP [root@argus:~$]
+■ ARGUS v3.0.0 ■ BANK RECONCILIATION ■ DELFABRO GROUP [root@argus:~$]
 ```
 
 ---
 
-## ¿Qué es ARGUS?
+## What is ARGUS?
 
-ARGUS es un sistema web de automatización financiera que reemplaza horas de trabajo manual diario. Procesa extractos bancarios de **12 cuentas en 7 bancos distintos**, normaliza los datos, detecta errores humanos de categorización, y genera reportes listos para usar — todo en menos de 2 minutos.
+ARGUS is a web-based financial automation system that replaces hours of daily manual work. It processes bank statements from **12 accounts across 7 banks**, normalizes the data, detects human categorization errors, and generates ready-to-use reports — all in under 2 minutes.
 
-### El problema que resuelve
+### The problem it solves
 
-Antes de ARGUS, el equipo de finanzas de Delfabro pasaba horas cada día:
-- Copiando manualmente transacciones de 11 planillas Excel distintas
-- Asignando categorías contables a mano (40 categorías posibles)
-- Construyendo resúmenes bancarios diarios
-- Preparando exportaciones para el sistema ERP Coliseo
-- Detectando errores de clasificación manualmente
+Before ARGUS, the Delfabro finance team spent hours every day:
+- Manually copying transactions from 11 separate Excel spreadsheets
+- Assigning accounting categories by hand (40 possible categories)
+- Building daily bank summaries
+- Preparing exports for the Coliseo ERP system
+- Manually detecting classification errors
 
-**ARGUS hace todo eso automáticamente.**
+**ARGUS does all of that automatically.**
 
 ---
 
-## 📋 Cómo usarlo (Guía de Usuario)
+## How to use it (User Guide)
 
-### Acceso
+### Access
 ```
 https://argusdelfabro2026.github.io/ArgusPlatform/
 ```
 
-No requiere instalación. Solo un navegador web.
+No installation required. Just a web browser.
 
 ---
 
-### PASO 1 — Movimientos Bancarios
+### STEP 1 — Bank Transactions
 
-**Qué hace:** Normaliza y clasifica todas las transacciones bancarias del día.
+**What it does:** Normalizes and classifies all bank transactions.
 
-1. Hacer click en **`+ NUEVO RUN`** en la barra superior
-2. En el panel **[1] MOVIMIENTOS**, hacer click en **"Seleccionar Movimientos.xlsx"**
-3. Seleccionar el archivo `Movimientos.xlsx` del sistema (contiene todas las cuentas bancarias)
-4. Hacer click en **▶ EJECUTAR**
-5. Observar el terminal en tiempo real mientras procesa cada cuenta
-6. Al finalizar, aparece el botón **↓ DESCARGAR** para obtener el Excel normalizado
+1. Click **`+ NEW RUN`** in the top bar
+2. In the **[1] MOVIMIENTOS** panel, click **"Seleccionar Movimientos.xlsx"**
+3. Select the `Movimientos.xlsx` file (contains all bank accounts)
+4. Click **▶ EXECUTE**
+5. Watch the terminal stream in real time as each account is processed
+6. When done, a **↓ DOWNLOAD** button appears to get the normalized Excel
 
-**Qué genera:** `argus_movimientos_normalizados_[fecha].xlsx`
-- Todas las transacciones normalizadas con colores por empresa y tipo
-- Alertas de errores humanos de categorización resaltadas
-- Resumen por cuenta bancaria
-
----
-
-### PASO 2 — Conciliación ERP *(opcional)*
-
-**Qué hace:** Cruza las transacciones bancarias contra los registros del ERP Coliseo.
-
-> ⚠️ Requiere completar el Paso 1 primero.
-
-1. Subir `COBROS.xlsx` (ingresos registrados en Coliseo)
-2. Subir `PAGOS.xlsx` (pagos registrados en Coliseo)
-3. Hacer click en **▶ EJECUTAR**
-
-**Qué genera:** `argus_conciliacion_[fecha].xlsx`
-- Estado por transacción: `CONCILIADO` / `PENDIENTE BANCO` / `PENDIENTE ERP`
+**Output:** `argus_movimientos_normalizados_[date].xlsx`
+- All transactions normalized, color-coded by company and type
+- Human categorization errors highlighted
+- Summary per bank account
 
 ---
 
-### PASO 3 — Caja Fábrica Digital *(opcional)*
+### STEP 2 — Caja Digital Control
 
-**Qué hace:** Genera las entradas listas para copiar al libro de caja mensual.
+**What it does:** Compares Caja Digital records (canal=1 Transfer only) against categorized bank transactions from Step 1, generating a signed variance report by category.
 
-> ⚠️ Requiere completar el Paso 1 primero.
+> ⚠️ Requires Step 1 to be completed first.
 
-1. Subir `Caja.xlsx` (libro de caja mensual)
-2. Hacer click en **▶ EJECUTAR**
+1. Upload the Caja Digital Excel file
+2. Click **▶ EXECUTE**
 
-**Qué genera:** `argus_export_caja_[fecha].xlsx`
-- Entradas de caja listas para pegar en el archivo mensual
-
----
-
-### Dashboard — Historial de Runs
-
-Desde el **DASHBOARD** se puede:
-- Ver todos los runs anteriores (últimos 3 meses)
-- Ver el detalle de transacciones de cada run
-- Re-descargar los Excel generados
-- Ver estadísticas: total de transacciones procesadas, alertas detectadas
+**Output:** `argus_control_caja_dir_[date].xlsx`
+- Per category: Caja total (signed) | Bank total (signed) | Variance % | Status
+- Status: `OK` (≤10%) / `ALERT` (10–25%) / `CRITICAL` (>25% or only in one source)
 
 ---
 
-### Bancos soportados
+### STEP 3 — Caja Fábrica Digital *(optional)*
 
-| Empresa | Banco | Cuenta |
+**What it does:** Generates entries ready to paste into the monthly cash register file.
+
+> ⚠️ Requires Step 1 to be completed first.
+
+1. Upload `Caja.xlsx` (monthly cash register file)
+2. Click **▶ EXECUTE**
+
+**Output:** `argus_export_caja_[date].xlsx`
+- Cash register entries ready to paste into the monthly file
+
+---
+
+### Dashboard — Run History
+
+From the **DASHBOARD** you can:
+- View all previous runs (last 3 months)
+- See transaction details for each run
+- Re-download generated Excel files
+- View stats: total transactions processed, alerts detected
+
+---
+
+### Supported Banks
+
+| Company | Bank | Account |
 |---|---|---|
 | DD SRL | ICBC | ICBC dd srl |
 | DD SRL | Mercado Pago | MP fondo azul |
@@ -113,7 +113,7 @@ Desde el **DASHBOARD** se puede:
 
 ---
 
-## 🏗️ Arquitectura Técnica
+## Technical Architecture
 
 ### Stack
 
@@ -136,7 +136,7 @@ Desde el **DASHBOARD** se puede:
 │  DATABASE + STORAGE                                 │
 │  Supabase (PostgreSQL + Storage)                   │
 │  arjymhqzsdnktfojftpi.supabase.co                  │
-│  Auto-purge: runs > 3 meses eliminados             │
+│  Auto-purge: runs older than 3 months deleted      │
 └─────────────────────────────────────────────────────┘
 ```
 
@@ -154,7 +154,7 @@ git push origin main
 
 ---
 
-### Estructura del Proyecto
+### Project Structure
 
 ```
 ArgusPlatform/
@@ -163,19 +163,21 @@ ArgusPlatform/
 │   │   ├── main.py                 # FastAPI app + CORS
 │   │   ├── config.py               # Bank configs (12 accounts, 7 formats)
 │   │   ├── api/routes/
-│   │   │   ├── process.py          # SSE pipeline endpoints (Paso 1, 2, 3)
-│   │   │   ├── runs.py             # History endpoints
+│   │   │   ├── process.py          # SSE pipeline endpoints (Step 1, 2, 3)
+│   │   │   ├── runs.py             # Run history endpoints
 │   │   │   └── files.py            # Excel download endpoints
 │   │   ├── core/
 │   │   │   ├── supabase.py         # Supabase client
 │   │   │   └── config.py           # Settings (env vars)
 │   │   ├── db/queries.py           # All DB operations
-│   │   ├── services/               # Core processing (Wave 1+2 logic)
+│   │   ├── services/               # Core processing logic
 │   │   │   ├── loader.py           # Excel file loader
 │   │   │   ├── normalizer.py       # 7-format bank normalizer
 │   │   │   ├── processor.py        # Pipeline orchestrator
 │   │   │   ├── summary.py          # Daily summaries generator
 │   │   │   ├── exporter.py         # Excel report generator
+│   │   │   ├── caja_dir_loader.py  # Caja Digital loader (canal=1 filter)
+│   │   │   ├── control_engine.py   # Caja Digital vs bank variance engine
 │   │   │   └── reconciler.py       # ERP reconciliation (Wave 2)
 │   │   └── models/                 # Dataclasses
 │   ├── Dockerfile                  # HuggingFace deployment
@@ -210,46 +212,46 @@ ArgusPlatform/
 
 ---
 
-### Schema de Base de Datos
+### Database Schema
 
 ```sql
-runs              -- Una por sesión de procesamiento
-transactions      -- Todas las transacciones normalizadas (Paso 1)
-bank_summaries    -- Resumen diario por cuenta (Paso 1)
-reconciliation_lines -- Conciliación ERP vs banco (Paso 2)
-caja_entries      -- Entradas de caja (Paso 3)
-output_files      -- Archivos Excel generados (Storage paths)
+runs                 -- One per processing session
+transactions         -- All normalized transactions (Step 1)
+bank_summaries       -- Daily summary per account (Step 1)
+reconciliation_lines -- ERP vs bank reconciliation (Wave 2)
+caja_entries         -- Cash register entries (Step 3)
+output_files         -- Generated Excel files (Storage paths)
 ```
 
-**Retención:** Todos los datos se eliminan automáticamente a los 3 meses via `pg_cron`.
+**Retention:** All data is automatically deleted after 3 months via `pg_cron`.
 
 ---
 
-### Normalización Bancaria
+### Bank Normalization
 
-El corazón del sistema. Cada banco exporta en un formato diferente:
+The heart of the system. Each bank exports in a different format:
 
-| Banco | Quirk crítico |
+| Bank | Key quirk |
 |---|---|
-| ICBC | Débitos exportados como valores NEGATIVOS |
-| BBVA | Débitos exportados como valores NEGATIVOS |
-| Galicia | TODOS los valores positivos (débitos deben negarse manualmente) |
-| Mercado Pago | Columna `Valor` única con signo (negativo=débito) |
-| Bancor | Columna `Monto` con signo + headers con espacios en trailing |
-| Banco Nación | Columna `Importe` con signo |
-| Cresium | Datos desde fila 8 (filas 6-7 vacías), categoría en col 11 |
+| ICBC | Debits exported as NEGATIVE values |
+| BBVA | Debits exported as NEGATIVE values |
+| Galicia | ALL values positive (debits must be negated) |
+| Mercado Pago | Single `Valor` column with sign (negative=debit) |
+| Bancor | `Monto` column with sign + trailing-space headers |
+| Banco Nación | `Importe` column with sign |
+| Cresium | Data starts at row 8 (rows 6-7 empty), category in col 11 |
 
-**Detección de errores humanos:**
-- `Rule 0`: Sin categoría asignada → `⚠ FALTA CATEGORIZAR`
-- `Rule A`: Débito con categoría de ingreso (25-30) → `⚠ ERROR HUMANO`
-- `Rule B`: Crédito con categoría de egreso (1-24, 31-38) → `⚠ ERROR HUMANO`
-- **Excepción:** MP fondo azul cat.37 en créditos = válido (devoluciones ML)
+**Human error detection:**
+- `Rule 0`: No category assigned → `⚠ FALTA CATEGORIZAR`
+- `Rule A`: Debit with income category (25-30) → `⚠ ERROR HUMANO`
+- `Rule B`: Credit with expense category (1-24, 31-38) → `⚠ ERROR HUMANO`
+- **Exception:** MP fondo azul cat.37 on credits = valid (ML refunds)
 
 ---
 
-## 🚀 Setup Local (Desarrollo)
+## Local Setup (Development)
 
-### Requisitos
+### Requirements
 - Python 3.11+
 - Node.js 20+
 - Git
@@ -259,7 +261,7 @@ El corazón del sistema. Cada banco exporta en un formato diferente:
 cd backend
 pip install -r requirements.txt
 cp .env.example .env
-# Completar .env con credenciales de Supabase
+# Fill in .env with Supabase credentials
 uvicorn app.main:app --reload --port 8000
 ```
 
@@ -272,9 +274,9 @@ cp .env.example .env.local
 npm run dev
 ```
 
-Abrir: `http://localhost:3000`
+Open: `http://localhost:3000`
 
-### Variables de Entorno
+### Environment Variables
 
 **Backend** (`backend/.env`):
 ```
@@ -291,23 +293,23 @@ NEXT_PUBLIC_BACKEND_URL=http://localhost:8000
 
 ---
 
-## 🔄 Deploy
+## Deploy
 
-Todo es automático via GitHub Actions en cada push a `main`.
+Everything is automatic via GitHub Actions on every push to `main`.
 
-| Componente | Plataforma | Trigger |
+| Component | Platform | Trigger |
 |---|---|---|
-| Backend | HuggingFace Spaces | Cambios en `backend/**` |
-| Frontend | GitHub Pages | Cambios en `frontend/**` |
+| Backend | HuggingFace Spaces | Changes in `backend/**` |
+| Frontend | GitHub Pages | Changes in `frontend/**` |
 
-### GitHub Secrets requeridos
+### Required GitHub Secrets
 
-| Secret | Descripción |
+| Secret | Description |
 |---|---|
 | `HF_TOKEN` | HuggingFace Access Token (write) |
-| `NEXT_PUBLIC_BACKEND_URL` | URL del backend en HuggingFace |
+| `NEXT_PUBLIC_BACKEND_URL` | Backend URL on HuggingFace |
 
-### URLs de Producción
+### Production URLs
 
 | | URL |
 |---|---|
@@ -317,38 +319,38 @@ Todo es automático via GitHub Actions en cada push a `main`.
 
 ---
 
-## 📊 Métricas del Sistema
+## System Metrics
 
-| Métrica | Valor |
+| Metric | Value |
 |---|---|
-| Cuentas bancarias soportadas | 12 |
-| Formatos bancarios distintos | 7 |
-| Empresas | 2 (DD SRL + D y CIA) |
-| Categorías contables | 40 |
-| Transacciones por run | ~2,773 |
-| Tiempo de procesamiento | < 2 minutos |
-| Retención de datos | 3 meses |
+| Bank accounts supported | 12 |
+| Distinct bank formats | 7 |
+| Companies | 2 (DD SRL + D y CIA) |
+| Accounting categories | 40 |
+| Transactions per run | ~2,773 |
+| Processing time | < 2 minutes |
+| Data retention | 3 months |
 
 ---
 
-## 🗺️ Roadmap
+## Roadmap
 
-| Wave | Estado | Descripción |
+| Wave | Status | Description |
 |---|---|---|
-| Wave 1 | ✅ Done | Normalización + Clasificación + Resúmenes + Caja |
-| Wave 2 | ✅ Done | Conciliación ERP (COBROS/PAGOS vs banco) |
+| Wave 1 | ✅ Done | Normalization + Classification + Summaries + Caja |
+| Wave 2 | ✅ Done | ERP Reconciliation (COBROS/PAGOS vs bank) |
 | Wave 3 | ✅ Done | Web App (FastAPI + Next.js + Supabase) |
-| Wave 4 | 🔜 Planned | Dashboard analítico · Gráficos · Tendencias |
-| Wave 5 | 🔜 Planned | Notificaciones automáticas · Alertas por email |
+| Wave 4 | 🔜 Planned | Analytics dashboard · Charts · Trends |
+| Wave 5 | 🔜 Planned | Automatic notifications · Email alerts |
 
 ---
 
-## 👥 Equipo
+## Team
 
-| Rol | Contacto |
+| Role | Contact |
 |---|---|
-| Desarrollo | Max Ramos |
-| Cliente | Delfabro Group |
+| Development | Max Ramos |
+| Client | Delfabro Group |
 
 ---
 
