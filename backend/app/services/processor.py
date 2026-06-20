@@ -221,14 +221,15 @@ class Processor:
         progress("Construyendo pivotes mensuales por categoría...")
         variances = run_control(result.transactions, caja_rows)
 
-        criticos    = sum(1 for v in variances if v.estado == "CRITICO")
-        diferencias = sum(1 for v in variances if v.estado == "DIFERENCIA")
-        ok          = sum(1 for v in variances if v.estado == "OK")
+        critical = sum(1 for v in variances if v.estado == "CRITICAL")
+        alert    = sum(1 for v in variances if v.estado == "ALERT")
+        ok       = sum(1 for v in variances if v.estado == "OK")
 
-        progress(f"  → {ok} categorías cuadran (OK)")
-        progress(f"  → {diferencias} con diferencia de monto")
-        if criticos:
-            progress(f"  ⚠ {criticos} categorías CRÍTICAS (solo en una fuente)")
+        progress(f"  → {ok} categorías OK (varianza ≤10%)")
+        if alert:
+            progress(f"  ⚠ {alert} categorías ALERT (varianza 10-25%)")
+        if critical:
+            progress(f"  ✗ {critical} categorías CRITICAL (varianza >25% o solo en una fuente)")
 
         progress("Exportando reporte de control...")
         generated = self.exporter.export_control(
@@ -241,7 +242,7 @@ class Processor:
         progress("─" * 50)
         progress(
             f"✅ Control Caja Dir completo — {len(variances)} categorías, "
-            f"{criticos} críticas"
+            f"{critical} critical, {alert} alert"
         )
 
         result.control_variances = variances

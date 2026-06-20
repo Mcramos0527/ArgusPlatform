@@ -395,7 +395,7 @@ class Exporter:
         ws = wb.active
         ws.title = "Control Caja Dir"
 
-        ws.merge_cells("A1:G1")
+        ws.merge_cells("A1:H1")
         c = ws["A1"]
         c.value = (
             f"ARGUS — Control Caja Dirección vs Banco  |  "
@@ -408,25 +408,28 @@ class Exporter:
 
         headers = [
             "MES", "CATEGORÍA", "TOTAL BANCO", "TOTAL CAJA DIR",
-            "DIFERENCIA", "ESTADO", "ORIGEN",
+            "DIFERENCIA", "VARIANZA %", "ESTADO", "ORIGEN",
         ]
         _set_header_row(ws, headers, FILL_HEADER_BLUE, row=2)
         ws.freeze_panes = "A3"
 
-        fill_critico    = _header_fill("FCE4D6")  # red-tint   — CRITICO
-        fill_diferencia = _header_fill("FFF2CC")  # yellow-tint — DIFERENCIA
-        fill_ok         = _header_fill("E2EFDA")  # green-tint  — OK
+        fill_critical = _header_fill("FCE4D6")  # red-tint   — CRITICAL
+        fill_alert    = _header_fill("FFF2CC")  # yellow-tint — ALERT
+        fill_ok       = _header_fill("E2EFDA")  # green-tint  — OK
 
         status_styles = {
-            "CRITICO":    (fill_critico,    "9C0006"),
-            "DIFERENCIA": (fill_diferencia, "7F6000"),
-            "OK":         (fill_ok,         "375623"),
+            "CRITICAL": (fill_critical, "9C0006"),
+            "ALERT":    (fill_alert,    "7F6000"),
+            "OK":       (fill_ok,       "375623"),
         }
+
+        PCT_FORMAT = '0.00"%"'
 
         for row_idx, v in enumerate(variances, start=3):
             row_data = [
                 v.mes, v.categoria,
                 v.total_banco, v.total_caja, v.diferencia,
+                v.varianza_pct / 100,   # stored as decimal for % number format
                 v.estado, v.origen,
             ]
             fill, text_color = status_styles.get(v.estado, (None, "000000"))
@@ -438,31 +441,34 @@ class Exporter:
 
                 if fill:
                     cell.fill = fill
-                    if col_idx == 6:  # Estado column
+                    if col_idx == 7:  # Estado column
                         cell.font = Font(name="Calibri", size=10, bold=True, color=text_color)
 
                 if col_idx in (3, 4, 5):
                     cell.number_format = PESO_FORMAT
                     cell.alignment     = ALIGN_RIGHT
-                if col_idx in (1, 6, 7):
+                if col_idx == 6:   # VARIANZA %
+                    cell.number_format = '0.00%'
+                    cell.alignment     = ALIGN_RIGHT
+                if col_idx in (1, 7, 8):
                     cell.alignment = ALIGN_CENTER
 
         # Summary counts at bottom
         if variances:
             row_idx = len(variances) + 4
-            criticos    = sum(1 for v in variances if v.estado == "CRITICO")
-            diferencias = sum(1 for v in variances if v.estado == "DIFERENCIA")
-            ok          = sum(1 for v in variances if v.estado == "OK")
+            critical = sum(1 for v in variances if v.estado == "CRITICAL")
+            alert    = sum(1 for v in variances if v.estado == "ALERT")
+            ok       = sum(1 for v in variances if v.estado == "OK")
 
             for label, val, color in [
-                ("CRÍTICOS",    criticos,    "9C0006"),
-                ("DIFERENCIAS", diferencias, "7F6000"),
-                ("OK",          ok,          "375623"),
+                ("CRITICAL", critical, "9C0006"),
+                ("ALERT",    alert,    "7F6000"),
+                ("OK",       ok,       "375623"),
             ]:
-                ws.cell(row=row_idx, column=6, value=label).font = Font(
+                ws.cell(row=row_idx, column=7, value=label).font = Font(
                     bold=True, color=color, name="Calibri", size=10
                 )
-                ws.cell(row=row_idx, column=7, value=val).font = Font(
+                ws.cell(row=row_idx, column=8, value=val).font = Font(
                     bold=True, color=color, name="Calibri", size=10
                 )
                 row_idx += 1
