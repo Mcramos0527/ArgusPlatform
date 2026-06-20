@@ -368,6 +368,102 @@ async def proceso_paso2(
     return EventSourceResponse(event_generator())
 
 
+# ── Control: Caja Dirección ───────────────────────────────────────────────────
+
+@router.post("/control/{run_id}")
+async def proceso_control(
+    run_id: str,
+    caja_dir: UploadFile = File(..., description="CajaDireccion.xlsx"),
+):
+    """
+    Control Caja Dirección — monthly category comparison vs bank transactions.
+    Requires a run that completed Step 1.  Output saved as step 4 in storage.
+    """
+    processor = _processors.get(run_id)
+    if processor is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Run '{run_id}' not found or Step 1 not completed in this session.",
+        )
+
+    tmp_dir = tempfile.mkdtemp(prefix=f"argus_{run_id}_ctrl_")
+    caja_dir_path = str(Path(tmp_dir) / "caja_dir.xlsx")
+    output_folder = str(Path(tmp_dir) / "output")
+    Path(output_folder).mkdir(parents=True, exist_ok=True)
+
+    await _save_upload(caja_dir, caja_dir_path)
+
+    try:
+        _upload_to_storage(caja_dir_path, f"inputs/{run_id}/caja_dir.xlsx")
+    except Exception as e:
+        logger.warning(f"Storage input upload failed (caja_dir.xlsx): {e}")
+
+    async def event_generator() -> AsyncGenerator[str, None]:
+        queue: asyncio.Queue = asyncio.Queue()
+        loop = asyncio.get_event_loop()
+
+        def on_progress(msg: str) -> None:
+            loop.call_soon_threadsafe(queue.put_nowait, ("log", msg))
+
+        def run_pipeline():
+            return processor.run_control_caja_dir(
+                path_caja_dir=caja_dir_path,
+                output_folder=output_folder,
+                on_progress=on_progress,
+            )
+
+        future = loop.run_in_executor(_executor, run_pipeline)
+        yield _log_event("⚡ Control Caja Dirección — comparando categorías mensuales")
+        yield _progress_event(5)
+
+        while not future.done():
+            try:
+                kind, payload = await asyncio.wait_for(queue.get(), timeout=0.1)
+                if kind == "log":
+                    yield _log_event(payload)
+            except asyncio.TimeoutError:
+                pass
+
+        while not queue.empty():
+            kind, payload = queue.get_nowait()
+            if kind == "log":
+                yield _log_event(payload)
+
+        try:
+            result = await future
+        except Exception as exc:
+            logger.exception("Control pipeline error")
+            yield _error_event(f"Error en control: {exc}")
+            return
+
+        if result.errors:
+            yield _error_event(" | ".join(result.errors))
+            return
+
+        yield _progress_event(70)
+        yield _log_event("📤 Subiendo reporte de control...")
+
+        output_files = list(Path(output_folder).glob("argus_control_caja_dir_*.xlsx"))
+        file_url = ""
+        if output_files:
+            out_local    = str(output_files[0])
+            out_filename = output_files[0].name
+            storage_path = f"outputs/{run_id}/control_{out_filename}"
+            try:
+                _upload_to_storage(out_local, storage_path)
+                queries.save_output_file(run_id, 4, out_filename, storage_path)
+                file_url = f"/api/runs/{run_id}/files/4"
+                yield _log_event(f"  ✓ {out_filename}")
+            except Exception as e:
+                logger.warning(f"Output upload failed: {e}")
+                yield _log_event(f"  ⚠ Storage upload failed: {e}")
+
+        yield _progress_event(100)
+        yield _done_event(run_id, file_url)
+
+    return EventSourceResponse(event_generator())
+
+
 # ── Paso 3: Caja Fábrica Digital ─────────────────────────────────────────────
 
 @router.post("/paso3/{run_id}")

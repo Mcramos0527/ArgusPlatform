@@ -9,7 +9,7 @@ interface StepPanelProps {
   title: string;
   description: string;
   status: StepStatus;
-  accent: 'cyan' | 'green' | 'purple';
+  accent: 'cyan' | 'green' | 'purple' | 'amber';
   progress: number;
   fileLabel: string;
   file?: File;
@@ -44,6 +44,13 @@ const accentStyles = {
     hoverText: 'hover:text-terminal-purple',
     hoverBorder: 'hover:border-terminal-purple',
     progressColor: 'text-terminal-purple',
+  },
+  amber: {
+    text: 'text-terminal-amber',
+    border: 'border-terminal-amber',
+    hoverText: 'hover:text-terminal-amber',
+    hoverBorder: 'hover:border-terminal-amber',
+    progressColor: 'text-terminal-amber',
   },
 } as const;
 

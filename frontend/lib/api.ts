@@ -166,3 +166,13 @@ export function streamPaso3(
   fd.append('caja', caja);
   return streamSSE(`${BACKEND_URL}/api/process/paso3/${runId}`, fd, onEvent);
 }
+
+export function streamControl(
+  runId: string,
+  cajaDir: File,
+  onEvent: (e: SSEEvent) => void
+): () => void {
+  const fd = new FormData();
+  fd.append('caja_dir', cajaDir);
+  return streamSSE(`${BACKEND_URL}/api/process/control/${runId}`, fd, onEvent);
+}

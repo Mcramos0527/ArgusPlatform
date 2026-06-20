@@ -184,6 +184,69 @@ class Processor:
         result.recon_lines = recon_lines
         return result
 
+    # ── Control: Caja Dirección vs Banco ─────────────────────────────────────
+
+    def run_control_caja_dir(
+        self,
+        path_caja_dir: str,
+        output_folder: str,
+        on_progress: Optional[Callable[[str], None]] = None,
+    ) -> "ProcessResult":
+        """
+        Control step — compare bank categorized transactions vs Caja Dirección
+        records by (month, category).  Requires Step 1 to have completed.
+        """
+        from app.services.caja_dir_loader import load_caja_direccion
+        from app.services.control_engine import run_control
+
+        def progress(msg: str):
+            logger.info(msg)
+            if on_progress:
+                on_progress(msg)
+
+        if self._result is None:
+            result = ProcessResult()
+            result.errors.append("El Paso 1 debe completarse antes del Control Caja Dir.")
+            return result
+
+        result = self._result
+
+        progress("Cargando Caja Dirección...")
+        caja_rows, warns = load_caja_direccion(path_caja_dir)
+        for w in warns:
+            result.warnings.append(f"Caja Dir: {w}")
+            progress(f"  ⚠ {w}")
+        progress(f"  → {len(caja_rows)} registros cargados (canal=1 / Transferencia)")
+
+        progress("Construyendo pivotes mensuales por categoría...")
+        variances = run_control(result.transactions, caja_rows)
+
+        criticos    = sum(1 for v in variances if v.estado == "CRITICO")
+        diferencias = sum(1 for v in variances if v.estado == "DIFERENCIA")
+        ok          = sum(1 for v in variances if v.estado == "OK")
+
+        progress(f"  → {ok} categorías cuadran (OK)")
+        progress(f"  → {diferencias} con diferencia de monto")
+        if criticos:
+            progress(f"  ⚠ {criticos} categorías CRÍTICAS (solo en una fuente)")
+
+        progress("Exportando reporte de control...")
+        generated = self.exporter.export_control(
+            variances=variances,
+            output_folder=output_folder,
+        )
+        for f in generated:
+            progress(f"  ✓ {Path(f).name}")
+
+        progress("─" * 50)
+        progress(
+            f"✅ Control Caja Dir completo — {len(variances)} categorías, "
+            f"{criticos} críticas"
+        )
+
+        result.control_variances = variances
+        return result
+
     # ── Step 3: Caja Fábrica Digital ─────────────────────────────────────────
 
     def run_paso3(

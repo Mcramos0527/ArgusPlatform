@@ -376,6 +376,100 @@ class Exporter:
         logger.info(f"Exported: {path.name}")
         return [str(path)]
 
+    def export_control(
+        self,
+        variances: list,
+        output_folder: str,
+    ) -> List[str]:
+        """Control Caja Dirección — export monthly category variance report."""
+        folder = Path(output_folder)
+        folder.mkdir(parents=True, exist_ok=True)
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        path = folder / f"argus_control_caja_dir_{timestamp}.xlsx"
+        self._export_control(variances, path)
+        logger.info(f"Exported: {path.name}")
+        return [str(path)]
+
+    def _export_control(self, variances: list, path: Path):
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Control Caja Dir"
+
+        ws.merge_cells("A1:G1")
+        c = ws["A1"]
+        c.value = (
+            f"ARGUS — Control Caja Dirección vs Banco  |  "
+            f"Generado: {date.today().strftime('%d/%m/%Y')}"
+        )
+        c.font      = Font(bold=True, size=13, color="FFFFFF", name="Calibri")
+        c.fill      = _header_fill("1F3864")
+        c.alignment = ALIGN_CENTER
+        ws.row_dimensions[1].height = 22
+
+        headers = [
+            "MES", "CATEGORÍA", "TOTAL BANCO", "TOTAL CAJA DIR",
+            "DIFERENCIA", "ESTADO", "ORIGEN",
+        ]
+        _set_header_row(ws, headers, FILL_HEADER_BLUE, row=2)
+        ws.freeze_panes = "A3"
+
+        fill_critico    = _header_fill("FCE4D6")  # red-tint   — CRITICO
+        fill_diferencia = _header_fill("FFF2CC")  # yellow-tint — DIFERENCIA
+        fill_ok         = _header_fill("E2EFDA")  # green-tint  — OK
+
+        status_styles = {
+            "CRITICO":    (fill_critico,    "9C0006"),
+            "DIFERENCIA": (fill_diferencia, "7F6000"),
+            "OK":         (fill_ok,         "375623"),
+        }
+
+        for row_idx, v in enumerate(variances, start=3):
+            row_data = [
+                v.mes, v.categoria,
+                v.total_banco, v.total_caja, v.diferencia,
+                v.estado, v.origen,
+            ]
+            fill, text_color = status_styles.get(v.estado, (None, "000000"))
+
+            for col_idx, value in enumerate(row_data, start=1):
+                cell = ws.cell(row=row_idx, column=col_idx, value=value)
+                cell.font   = FONT_NORMAL
+                cell.border = THIN_BORDER
+
+                if fill:
+                    cell.fill = fill
+                    if col_idx == 6:  # Estado column
+                        cell.font = Font(name="Calibri", size=10, bold=True, color=text_color)
+
+                if col_idx in (3, 4, 5):
+                    cell.number_format = PESO_FORMAT
+                    cell.alignment     = ALIGN_RIGHT
+                if col_idx in (1, 6, 7):
+                    cell.alignment = ALIGN_CENTER
+
+        # Summary counts at bottom
+        if variances:
+            row_idx = len(variances) + 4
+            criticos    = sum(1 for v in variances if v.estado == "CRITICO")
+            diferencias = sum(1 for v in variances if v.estado == "DIFERENCIA")
+            ok          = sum(1 for v in variances if v.estado == "OK")
+
+            for label, val, color in [
+                ("CRÍTICOS",    criticos,    "9C0006"),
+                ("DIFERENCIAS", diferencias, "7F6000"),
+                ("OK",          ok,          "375623"),
+            ]:
+                ws.cell(row=row_idx, column=6, value=label).font = Font(
+                    bold=True, color=color, name="Calibri", size=10
+                )
+                ws.cell(row=row_idx, column=7, value=val).font = Font(
+                    bold=True, color=color, name="Calibri", size=10
+                )
+                row_idx += 1
+
+        _auto_width(ws)
+        wb.save(path)
+
     # ── Archivo 3: Export Caja ─────────────────────────────────────────────────
 
     def _export_caja(self, entries: List[CajaEntry], path: Path):

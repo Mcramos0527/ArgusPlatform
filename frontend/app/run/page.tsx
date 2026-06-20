@@ -6,6 +6,7 @@ import {
   streamPaso1,
   streamPaso2,
   streamPaso3,
+  streamControl,
   downloadFile,
 } from '@/lib/api';
 import TerminalLog from '@/components/TerminalLog';
@@ -64,6 +65,7 @@ export default function RunPage() {
   const [logLines, setLogLines] = useState<LogLine[]>(BOOT_LINES);
 
   const [step1, setStep1] = useState<StepState>({ ...INITIAL_IDLE });
+  const [stepCtrl, setStepCtrl] = useState<StepState>({ ...INITIAL_LOCKED });
   const [step2, setStep2] = useState<StepState>({ ...INITIAL_LOCKED });
   const [step3, setStep3] = useState<StepState>({ ...INITIAL_LOCKED });
 
@@ -100,6 +102,7 @@ export default function RunPage() {
         setRunId(rid);
         if (event.stats) setRunStats(event.stats);
         setStep1((s) => ({ ...s, status: 'done', progress: 100 }));
+        setStepCtrl((s) => ({ ...s, status: 'idle' }));
         setStep2((s) => ({ ...s, status: 'idle' }));
         setIsRunning(false);
         addSep();
@@ -112,6 +115,37 @@ export default function RunPage() {
         setIsRunning(false);
         addSep();
         addLog(`✗ ERROR en Paso 1: ${event.msg}`);
+        addSep();
+      }
+    });
+  }
+
+  // ── Control: Caja Dirección ──────────────────────────────────────────────────
+
+  function executeStepControl() {
+    if (!runId || !stepCtrl.file) return;
+    setStepCtrl((s) => ({ ...s, status: 'running', progress: 5 }));
+    setIsRunning(true);
+    addLog('⚡ Control Caja Dirección — comparando categorías vs banco');
+    addLog(`📂 Cargando ${stepCtrl.file.name}...`);
+
+    cancelRef.current = streamControl(runId, stepCtrl.file, (event: SSEEvent) => {
+      if (event.type === 'log') {
+        addLog(event.msg, event.ts);
+      } else if (event.type === 'progress') {
+        setStepCtrl((s) => ({ ...s, progress: event.pct }));
+      } else if (event.type === 'done') {
+        setStepCtrl((s) => ({ ...s, status: 'done', progress: 100 }));
+        setIsRunning(false);
+        addSep();
+        addLog('✓ CONTROL CAJA DIR COMPLETADO');
+        addLog('  Descargá el reporte de varianzas por categoría');
+        addSep();
+      } else if (event.type === 'error') {
+        setStepCtrl((s) => ({ ...s, status: 'error', errorMsg: event.msg }));
+        setIsRunning(false);
+        addSep();
+        addLog(`✗ ERROR en Control: ${event.msg}`);
         addSep();
       }
     });
@@ -193,6 +227,7 @@ export default function RunPage() {
     cancelRef.current?.();
     cancelRef.current = null;
     setStep1({ ...INITIAL_IDLE });
+    setStepCtrl({ ...INITIAL_LOCKED });
     setStep2({ ...INITIAL_LOCKED });
     setStep3({ ...INITIAL_LOCKED });
     setRunId(null);
@@ -234,6 +269,22 @@ export default function RunPage() {
 
         <StepPanel
           step={2}
+          title="CONTROL CAJA DIR"
+          description="Comparar totales mensuales por categoría: Caja Dirección vs banco (solo canal=1)"
+          status={stepCtrl.status}
+          accent="amber"
+          progress={stepCtrl.progress}
+          fileLabel="Seleccionar CajaDireccion.xlsx"
+          file={stepCtrl.file}
+          onFileChange={(f) => setStepCtrl((s) => ({ ...s, file: f }))}
+          onExecute={executeStepControl}
+          onDownload={runId && stepCtrl.status === 'done' ? () => downloadFile(runId, 4) : undefined}
+          errorMsg={stepCtrl.errorMsg}
+          runId={runId ?? undefined}
+        />
+
+        <StepPanel
+          step={3}
           title="CONCILIACIÓN"
           description="Conciliar contra ERP Coliseo (COBROS + PAGOS)"
           status={step2.status}
@@ -252,7 +303,7 @@ export default function RunPage() {
         />
 
         <StepPanel
-          step={3}
+          step={4}
           title="CAJA"
           description="Generar export Caja Fábrica Digital"
           status={step3.status}
