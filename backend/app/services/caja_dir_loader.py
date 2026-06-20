@@ -1,5 +1,15 @@
 # app/services/caja_dir_loader.py
-# Loads Caja Dirección Excel file and filters records where canal == 1 (Transfer).
+# Loads Caja Digital / Caja Dirección Excel and filters by canal == 1 (Transfer).
+#
+# Expected column format (from client's Caja Digital file):
+#   DIA | Fecha | NRO TIPO | TIPO | IMPORTE | DESCRIPCIÓN | usd | C | Cliente
+#   | C2 (canal numeric) | Canal (text) | importe2 (signed amount) | SEMANA
+#
+# Key mapping:
+#   C2        → canal field   (filter: C2 == 1 = Transfer)
+#   TIPO      → category      (has leading space, e.g. " VENTAS" — stripped on read)
+#   importe2  → signed amount (negative = expense, positive = income)
+#   Fecha     → date
 
 import logging
 from datetime import date
@@ -9,20 +19,36 @@ import openpyxl
 
 logger = logging.getLogger("argus.caja_dir")
 
-# Column name aliases (case-insensitive exact match)
+# Standard column name aliases (case-insensitive exact match after strip)
 _FECHA_NAMES     = {"fecha", "date", "fecha_movimiento", "fecha_mov", "fecha mov"}
-_CATEGORIA_NAMES = {"categoria", "categoría", "concepto", "descripcion", "descripción", "tipo", "rubro"}
+_CATEGORIA_NAMES = {"tipo", "categoria", "categoría", "concepto", "descripcion",
+                    "descripción", "rubro", "nro tipo"}
 _IMPORTE_NAMES   = {"importe", "monto", "amount", "total", "haber", "debe"}
 _CANAL_NAMES     = {"canal", "channel", "tipo_canal", "tipo canal"}
+
+# Priority overrides: these column names always win over the generic aliases above.
+# Key = exact lowercase column header → logical field name to assign.
+_PRIORITY_COLS: Dict[str, str] = {
+    "importe2": "importe",  # signed amount — preferred over plain "importe"
+    "c2":       "canal",    # numeric canal (1=Transfer) — preferred over text "Canal"
+}
 
 
 def _detect_columns(header_row: tuple) -> Dict[str, int]:
     """Map logical field names to column indices from a header tuple."""
     mapping: Dict[str, int] = {}
+
     for idx, cell in enumerate(header_row):
         if cell is None:
             continue
         name = str(cell).strip().lower()
+
+        # Priority overrides always win, even if the field was already mapped
+        if name in _PRIORITY_COLS:
+            mapping[_PRIORITY_COLS[name]] = idx
+            continue
+
+        # Standard aliases — first match wins
         if name in _FECHA_NAMES and "fecha" not in mapping:
             mapping["fecha"] = idx
         if name in _CATEGORIA_NAMES and "categoria" not in mapping:
@@ -31,28 +57,29 @@ def _detect_columns(header_row: tuple) -> Dict[str, int]:
             mapping["importe"] = idx
         if name in _CANAL_NAMES and "canal" not in mapping:
             mapping["canal"] = idx
+
     return mapping
 
 
 def load_caja_direccion(path: str) -> Tuple[List[dict], List[str]]:
     """
-    Load Caja Dirección Excel and filter by canal == 1 (Transfer).
+    Load Caja Digital / Caja Dirección Excel and filter by canal == 1 (Transfer).
 
     Returns:
-        rows      — list of dicts with keys: fecha, categoria, importe
-        warnings  — non-fatal issues detected during load
+        rows     — list of dicts: {fecha, categoria (stripped), importe (signed)}
+        warnings — non-fatal issues detected during load
     """
     warnings: List[str] = []
 
     try:
         wb = openpyxl.load_workbook(path, read_only=True, data_only=True)
     except Exception as exc:
-        return [], [f"No se pudo abrir Caja Dirección: {exc}"]
+        return [], [f"No se pudo abrir el archivo de Caja: {exc}"]
 
     ws = wb.active
     all_rows = list(ws.iter_rows(values_only=True))
     if not all_rows:
-        return [], ["El archivo Caja Dirección está vacío"]
+        return [], ["El archivo de Caja está vacío"]
 
     # Find first non-empty row as header
     header_row: Optional[tuple] = None
@@ -64,17 +91,17 @@ def load_caja_direccion(path: str) -> Tuple[List[dict], List[str]]:
             break
 
     if header_row is None:
-        return [], ["No se encontró encabezado en Caja Dirección"]
+        return [], ["No se encontró encabezado en el archivo de Caja"]
 
     col_map = _detect_columns(header_row)
-    logger.info(f"Caja Dir — columnas detectadas: {col_map}")
+    logger.info(f"Caja Digital — columnas detectadas: {col_map}")
 
     if "importe" not in col_map:
-        return [], ["No se encontró columna de importe/monto en Caja Dirección"]
+        return [], ["No se encontró columna de importe/importe2 en el archivo de Caja"]
     if "categoria" not in col_map:
-        warnings.append("Sin columna de categoría detectada — se usará texto vacío")
+        warnings.append("Sin columna de categoría/TIPO detectada — se usará texto vacío")
     if "canal" not in col_map:
-        warnings.append("Sin columna 'Canal' — se incluirán todos los registros sin filtrar")
+        warnings.append("Sin columna 'C2' o 'Canal' — se incluirán todos los registros")
 
     rows: List[dict] = []
     total = 0
@@ -85,7 +112,7 @@ def load_caja_direccion(path: str) -> Tuple[List[dict], List[str]]:
             continue
         total += 1
 
-        # Filter: canal must equal 1 (Transfer)
+        # Filter: C2 (canal numeric) must equal 1 (Transfer)
         if "canal" in col_map:
             canal_val = row[col_map["canal"]]
             try:
@@ -101,10 +128,10 @@ def load_caja_direccion(path: str) -> Tuple[List[dict], List[str]]:
         fecha: Optional[date] = None
         if isinstance(fecha_raw, date):
             fecha = fecha_raw
-        elif hasattr(fecha_raw, "date"):  # datetime object
+        elif hasattr(fecha_raw, "date"):
             fecha = fecha_raw.date()
 
-        # Parse categoria
+        # Parse categoria — strip leading/trailing spaces for matching
         cat_idx = col_map.get("categoria")
         categoria = (
             str(row[cat_idx]).strip()
@@ -112,7 +139,7 @@ def load_caja_direccion(path: str) -> Tuple[List[dict], List[str]]:
             else ""
         )
 
-        # Parse importe (absolute value for comparison)
+        # Parse importe — signed (importe2 is preferred: negative=expense, positive=income)
         importe = 0.0
         try:
             raw = row[col_map["importe"]]
@@ -125,9 +152,10 @@ def load_caja_direccion(path: str) -> Tuple[List[dict], List[str]]:
 
     if "canal" in col_map:
         logger.info(
-            f"Caja Dir — total: {total}, filtrados (canal≠1): {skipped}, procesados: {len(rows)}"
+            f"Caja Digital — total: {total}, filtrados (canal≠1): {skipped}, "
+            f"procesados: {len(rows)}"
         )
     else:
-        logger.info(f"Caja Dir — total procesados: {len(rows)}")
+        logger.info(f"Caja Digital — total procesados: {len(rows)}")
 
     return rows, warnings

@@ -1,6 +1,9 @@
 # app/services/control_engine.py
-# Cross-matches bank categorized transactions vs Caja Dirección records
-# by (month, category), producing a variance report.
+# Cross-matches bank categorized transactions vs Caja Digital records
+# by (month, category), producing a signed variance report.
+#
+# Amounts are SIGNED: positive = income, negative = expense.
+# Variance % = |diff| / max(|caja|, |banco|) * 100
 #
 # Classification rules (tickets #1 + #2):
 #   Category only in one source              → CRITICAL
@@ -18,19 +21,18 @@ from app.models import Transaction
 
 logger = logging.getLogger("argus.control")
 
-# Thresholds (ticket #2)
-_ALERT_PCT    = 10.0   # > 10% → ALERT
-_CRITICAL_PCT = 25.0   # > 25% → CRITICAL
+_ALERT_PCT    = 10.0
+_CRITICAL_PCT = 25.0
 
 
 @dataclass
 class ControlVariance:
     mes: str              # "2026-05"
     categoria: str
-    total_banco: float
-    total_caja: float
-    diferencia: float     # banco − caja
-    varianza_pct: float   # |diferencia| / max(banco, caja) * 100
+    total_banco: float    # signed sum of importe_neto from bank
+    total_caja: float     # signed sum of importe2 from Caja Digital
+    diferencia: float     # caja − banco
+    varianza_pct: float   # |diff| / max(|caja|, |banco|) × 100
     estado: str           # "OK" | "ALERT" | "CRITICAL"
     origen: str           # "BANCO" | "CAJA" | "AMBOS"
 
@@ -40,7 +42,6 @@ def _month_key(d: Optional[date]) -> str:
 
 
 def _variance_pct(total_banco: float, total_caja: float, diferencia: float) -> float:
-    """Percentage variance relative to the larger of the two totals."""
     base = max(abs(total_banco), abs(total_caja))
     if base == 0:
         return 0.0
@@ -52,32 +53,29 @@ def run_control(
     caja_rows: List[dict],
 ) -> List[ControlVariance]:
     """
-    Build monthly category pivots from both sources and compute variances.
+    Build monthly category pivots from both sources and compute signed variances.
 
-    Categories matched via literal uppercase text comparison (ticket #1).
-    Status assigned by variance percentage (ticket #2):
-      - Category only in one source           → CRITICAL
-      - variance > 25%                        → CRITICAL
-      - 10% < variance <= 25%                 → ALERT
-      - variance <= 10%                       → OK
+    Bank side   : sum of importe_neto (signed) per (month, Cat. Nombre)
+    Caja side   : sum of importe2     (signed) per (month, TIPO stripped)
+    Category match: literal uppercase comparison after stripping whitespace.
     """
 
-    # ── Bank pivot: (month, CATEGORY) → sum |importe_neto| ──────────────────
+    # ── Bank pivot: (month, CATEGORY) → sum importe_neto (signed) ───────────
     bank_pivot: dict = defaultdict(float)
     for tx in bank_transactions:
         if not tx.categoria_nombre:
             continue
         key = (_month_key(tx.fecha), tx.categoria_nombre.strip().upper())
-        bank_pivot[key] += abs(tx.importe_neto)
+        bank_pivot[key] += tx.importe_neto   # signed — no abs()
 
-    # ── Caja pivot: (month, CATEGORY) → sum |importe| ────────────────────────
+    # ── Caja pivot: (month, CATEGORY) → sum importe (signed, = importe2) ────
     caja_pivot: dict = defaultdict(float)
     for row in caja_rows:
         cat = (row.get("categoria") or "").strip().upper()
         if not cat:
             continue
         key = (_month_key(row.get("fecha")), cat)
-        caja_pivot[key] += abs(row.get("importe", 0.0))
+        caja_pivot[key] += row.get("importe", 0.0)   # signed — no abs()
 
     # ── Cross-join all (month, category) keys ────────────────────────────────
     all_keys = set(bank_pivot) | set(caja_pivot)
@@ -86,13 +84,12 @@ def run_control(
     for mes, cat in sorted(all_keys):
         total_banco = bank_pivot.get((mes, cat), 0.0)
         total_caja  = caja_pivot.get((mes, cat), 0.0)
-        diferencia  = total_banco - total_caja
+        diferencia  = total_caja - total_banco
 
         in_banco = (mes, cat) in bank_pivot
         in_caja  = (mes, cat) in caja_pivot
 
         if not in_banco or not in_caja:
-            # Single-source → always CRITICAL (ticket #1)
             varianza_pct = 100.0
             estado = "CRITICAL"
             origen = "BANCO" if in_banco else "CAJA"

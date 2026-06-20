@@ -4,7 +4,6 @@ import { useState, useCallback, useRef } from 'react';
 import type { LogLine, StepState, SSEEvent, RunStats } from '@/lib/types';
 import {
   streamPaso1,
-  streamPaso2,
   streamPaso3,
   streamControl,
   downloadFile,
@@ -64,10 +63,9 @@ const BOOT_LINES: LogLine[] = [
 export default function RunPage() {
   const [logLines, setLogLines] = useState<LogLine[]>(BOOT_LINES);
 
-  const [step1, setStep1] = useState<StepState>({ ...INITIAL_IDLE });
+  const [step1, setStep1]     = useState<StepState>({ ...INITIAL_IDLE });
   const [stepCtrl, setStepCtrl] = useState<StepState>({ ...INITIAL_LOCKED });
-  const [step2, setStep2] = useState<StepState>({ ...INITIAL_LOCKED });
-  const [step3, setStep3] = useState<StepState>({ ...INITIAL_LOCKED });
+  const [step3, setStep3]     = useState<StepState>({ ...INITIAL_LOCKED });
 
   const [runId, setRunId] = useState<string | null>(null);
   const [isRunning, setIsRunning] = useState(false);
@@ -83,7 +81,7 @@ export default function RunPage() {
     setLogLines((prev) => [...prev, makeSeparator()]);
   }, []);
 
-  // ── Step 1 ──────────────────────────────────────────────────────────────────
+  // ── Step 1: Movimientos Bancarios ────────────────────────────────────────────
 
   function executeStep1() {
     if (!step1.file) return;
@@ -103,12 +101,12 @@ export default function RunPage() {
         if (event.stats) setRunStats(event.stats);
         setStep1((s) => ({ ...s, status: 'done', progress: 100 }));
         setStepCtrl((s) => ({ ...s, status: 'idle' }));
-        setStep2((s) => ({ ...s, status: 'idle' }));
+        setStep3((s) => ({ ...s, status: 'idle' }));
         setIsRunning(false);
         addSep();
         addLog('✓ PASO 1 COMPLETADO');
         addLog(`  run_id: ${rid}`);
-        addLog('  Subí COBROS.xlsx y PAGOS.xlsx para continuar');
+        addLog('  Subí Caja Digital para el Control (Paso 2) o Caja.xlsx para el Export (Paso 3)');
         addSep();
       } else if (event.type === 'error') {
         setStep1((s) => ({ ...s, status: 'error', errorMsg: event.msg }));
@@ -120,13 +118,13 @@ export default function RunPage() {
     });
   }
 
-  // ── Control: Caja Dirección ──────────────────────────────────────────────────
+  // ── Step 2: Control Caja Digital ─────────────────────────────────────────────
 
   function executeStepControl() {
     if (!runId || !stepCtrl.file) return;
     setStepCtrl((s) => ({ ...s, status: 'running', progress: 5 }));
     setIsRunning(true);
-    addLog('⚡ Control Caja Dirección — comparando categorías vs banco');
+    addLog('⚡ Paso 2 — Control Caja Digital vs Banco (solo canal=1 Transfer)');
     addLog(`📂 Cargando ${stepCtrl.file.name}...`);
 
     cancelRef.current = streamControl(runId, stepCtrl.file, (event: SSEEvent) => {
@@ -138,63 +136,26 @@ export default function RunPage() {
         setStepCtrl((s) => ({ ...s, status: 'done', progress: 100 }));
         setIsRunning(false);
         addSep();
-        addLog('✓ CONTROL CAJA DIR COMPLETADO');
+        addLog('✓ PASO 2 COMPLETADO — Control Caja Digital');
         addLog('  Descargá el reporte de varianzas por categoría');
         addSep();
       } else if (event.type === 'error') {
         setStepCtrl((s) => ({ ...s, status: 'error', errorMsg: event.msg }));
         setIsRunning(false);
         addSep();
-        addLog(`✗ ERROR en Control: ${event.msg}`);
+        addLog(`✗ ERROR en Paso 2: ${event.msg}`);
         addSep();
       }
     });
   }
 
-  // ── Step 2 ──────────────────────────────────────────────────────────────────
-
-  function executeStep2() {
-    if (!runId || !step2.file || !step2.file2) return;
-    setStep2((s) => ({ ...s, status: 'running', progress: 5 }));
-    setIsRunning(true);
-    addLog('⚡ Iniciando Paso 2 — Conciliación ERP Coliseo');
-    addLog(`📂 Cargando ${step2.file.name} + ${step2.file2.name}...`);
-
-    cancelRef.current = streamPaso2(
-      runId,
-      step2.file,
-      step2.file2,
-      (event: SSEEvent) => {
-        if (event.type === 'log') {
-          addLog(event.msg, event.ts);
-        } else if (event.type === 'progress') {
-          setStep2((s) => ({ ...s, progress: event.pct }));
-        } else if (event.type === 'done') {
-          setStep2((s) => ({ ...s, status: 'done', progress: 100 }));
-          setStep3((s) => ({ ...s, status: 'idle' }));
-          setIsRunning(false);
-          addSep();
-          addLog('✓ PASO 2 COMPLETADO — Conciliación lista');
-          addLog('  Subí Caja.xlsx para generar el export final');
-          addSep();
-        } else if (event.type === 'error') {
-          setStep2((s) => ({ ...s, status: 'error', errorMsg: event.msg }));
-          setIsRunning(false);
-          addSep();
-          addLog(`✗ ERROR en Paso 2: ${event.msg}`);
-          addSep();
-        }
-      }
-    );
-  }
-
-  // ── Step 3 ──────────────────────────────────────────────────────────────────
+  // ── Step 3: Caja Fábrica Digital ─────────────────────────────────────────────
 
   function executeStep3() {
     if (!runId || !step3.file) return;
     setStep3((s) => ({ ...s, status: 'running', progress: 5 }));
     setIsRunning(true);
-    addLog('⚡ Iniciando Paso 3 — Export Caja Fábrica Digital');
+    addLog('⚡ Paso 3 — Export Caja Fábrica Digital');
     addLog(`📂 Cargando ${step3.file.name}...`);
 
     cancelRef.current = streamPaso3(runId, step3.file, (event: SSEEvent) => {
@@ -206,9 +167,9 @@ export default function RunPage() {
         setStep3((s) => ({ ...s, status: 'done', progress: 100 }));
         setIsRunning(false);
         addSep();
-        addLog('✓ TODOS LOS PASOS COMPLETADOS');
+        addLog('✓ PASO 3 COMPLETADO — Export Caja Fábrica Digital');
         addLog(`  run_id: ${event.run_id}`);
-        addLog('  ↓ Descargá los archivos de salida desde los pasos');
+        addLog('  ↓ Descargá los archivos desde los pasos');
         addSep();
         addLog('🎉 Pipeline finalizado exitosamente');
       } else if (event.type === 'error') {
@@ -228,7 +189,6 @@ export default function RunPage() {
     cancelRef.current = null;
     setStep1({ ...INITIAL_IDLE });
     setStepCtrl({ ...INITIAL_LOCKED });
-    setStep2({ ...INITIAL_LOCKED });
     setStep3({ ...INITIAL_LOCKED });
     setRunId(null);
     setIsRunning(false);
@@ -269,12 +229,12 @@ export default function RunPage() {
 
         <StepPanel
           step={2}
-          title="CONTROL CAJA DIR"
-          description="Comparar totales mensuales por categoría: Caja Dirección vs banco (solo canal=1)"
+          title="CONTROL CAJA DIGITAL"
+          description="Comparar Caja Digital vs banco por categoría (solo canal=1 Transfer)"
           status={stepCtrl.status}
           accent="amber"
           progress={stepCtrl.progress}
-          fileLabel="Seleccionar CajaDireccion.xlsx"
+          fileLabel="Seleccionar CajaDigital.xlsx"
           file={stepCtrl.file}
           onFileChange={(f) => setStepCtrl((s) => ({ ...s, file: f }))}
           onExecute={executeStepControl}
@@ -285,25 +245,6 @@ export default function RunPage() {
 
         <StepPanel
           step={3}
-          title="CONCILIACIÓN"
-          description="Conciliar contra ERP Coliseo (COBROS + PAGOS)"
-          status={step2.status}
-          accent="green"
-          progress={step2.progress}
-          fileLabel="Seleccionar COBROS.xlsx"
-          file={step2.file}
-          file2Label="Seleccionar PAGOS.xlsx"
-          file2={step2.file2}
-          onFileChange={(f) => setStep2((s) => ({ ...s, file: f }))}
-          onFile2Change={(f) => setStep2((s) => ({ ...s, file2: f }))}
-          onExecute={executeStep2}
-          onDownload={runId ? () => downloadFile(runId, 2) : undefined}
-          errorMsg={step2.errorMsg}
-          runId={runId ?? undefined}
-        />
-
-        <StepPanel
-          step={4}
           title="CAJA"
           description="Generar export Caja Fábrica Digital"
           status={step3.status}
