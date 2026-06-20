@@ -206,7 +206,7 @@ class Processor:
 
         if self._result is None:
             result = ProcessResult()
-            result.errors.append("El Paso 1 debe completarse antes del Control Caja Dir.")
+            result.errors.append("Step 1 must complete before running Control Caja Dir.")
             return result
 
         result = self._result

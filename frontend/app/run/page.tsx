@@ -81,7 +81,7 @@ export default function RunPage() {
     setLogLines((prev) => [...prev, makeSeparator()]);
   }, []);
 
-  // ── Step 1: Movimientos Bancarios ────────────────────────────────────────────
+  // ── Step 1: Bank Transactions ───────────────────────────────────────────────
 
   function executeStep1() {
     if (!step1.file) return;
@@ -118,7 +118,7 @@ export default function RunPage() {
     });
   }
 
-  // ── Step 2: Control Caja Digital ─────────────────────────────────────────────
+  // ── Step 2: Caja Digital Control ────────────────────────────────────────────
 
   function executeStepControl() {
     if (!runId || !stepCtrl.file) return;
@@ -149,7 +149,7 @@ export default function RunPage() {
     });
   }
 
-  // ── Step 3: Caja Fábrica Digital ─────────────────────────────────────────────
+  // ── Step 3: Caja Fábrica Digital export ─────────────────────────────────────
 
   function executeStep3() {
     if (!runId || !step3.file) return;
@@ -182,7 +182,7 @@ export default function RunPage() {
     });
   }
 
-  // ── Reset ────────────────────────────────────────────────────────────────────
+  // ── Reset ───────────────────────────────────────────────────────────────────
 
   function handleReset() {
     cancelRef.current?.();
@@ -202,9 +202,9 @@ export default function RunPage() {
 
   return (
     <div className="flex-1 flex flex-col md:flex-row min-h-0 overflow-hidden">
-      {/* ── Left: Step controls ──────────────────────────────────────────── */}
+      {/* ── Left: Step controls ─────────────────────────────────────────── */}
       <aside className="w-full md:w-72 lg:w-80 border-b md:border-b-0 md:border-r border-terminal-border bg-terminal-bg-secondary overflow-y-auto p-3 shrink-0">
-        {/* Panel header */}
+        {/* Pipeline header */}
         <div className="text-terminal-gray mb-3 border-b border-terminal-border pb-2 flex items-center justify-between">
           <span className="text-terminal-green font-bold text-xs">PIPELINE</span>
           <span className="text-terminal-gray text-xs">
@@ -259,7 +259,7 @@ export default function RunPage() {
           runId={runId ?? undefined}
         />
 
-        {/* Controls */}
+        {/* Bottom controls */}
         <div className="border-t border-terminal-border pt-3 mt-1 space-y-2">
           <button
             onClick={handleReset}
@@ -272,7 +272,7 @@ export default function RunPage() {
           </button>
         </div>
 
-        {/* Active run ID display */}
+        {/* Active run ID */}
         {runId && (
           <div className="mt-3 p-2 border border-terminal-border-bright rounded bg-terminal-bg text-xs">
             <div className="text-terminal-gray-dim text-xs">run_id:</div>
@@ -281,7 +281,7 @@ export default function RunPage() {
         )}
       </aside>
 
-      {/* ── Right: Terminal log + Run Summary ───────────────────────────── */}
+      {/* ── Right: Terminal log + Run Summary ──────────────────────────── */}
       <section className="flex-1 p-3 min-h-0 min-w-0 flex flex-col gap-3">
         <TerminalLog
           lines={logLines}

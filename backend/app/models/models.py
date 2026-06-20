@@ -1,5 +1,5 @@
 # app/models.py
-# Modelos de datos del sistema ARGUS
+# ARGUS data models
 
 from dataclasses import dataclass, field
 from typing import Optional
@@ -8,7 +8,7 @@ from datetime import date
 
 @dataclass
 class Transaction:
-    """Modelo unificado de transacción bancaria normalizada."""
+    """Unified normalized bank transaction model."""
 
     pestaña: str = ""
     empresa: str = ""
@@ -22,7 +22,7 @@ class Transaction:
 
     debito: float = 0.0
     credito: float = 0.0
-    importe_neto: float = 0.0   # positivo = ingreso, negativo = egreso
+    importe_neto: float = 0.0   # positive = income, negative = expense
     saldo: float = 0.0
 
     nro_referencia: str = ""
@@ -34,7 +34,7 @@ class Transaction:
 
     categoria_codigo: Optional[int] = None
     categoria_nombre: str = ""
-    tipo_movimiento: str = ""   # COBRO / PAGO / INTERNO / SIN CLASIFICAR
+    tipo_movimiento: str = ""   # COBRO / PAGO / INTERNO / SIN CLASIFICAR (unclassified)
     alerta: str = ""               # human error detection alert
 
     def to_dict(self) -> dict:
@@ -65,7 +65,7 @@ class Transaction:
 
 @dataclass
 class BankSummary:
-    """Resumen diario de una cuenta bancaria — replica BANCOS DEL DIA."""
+    """Daily summary of a bank account — replicates BANCOS DEL DIA."""
 
     empresa: str = ""
     banco: str = ""
@@ -92,7 +92,7 @@ class BankSummary:
 
 @dataclass
 class CajaEntry:
-    """Entrada para el archivo CAJA FÁBRICA DIGITAL."""
+    """Entry for the CAJA FÁBRICA DIGITAL file."""
 
     dia: int = 0
     fecha: Optional[date] = None
@@ -120,7 +120,7 @@ class CajaEntry:
 
 @dataclass
 class ProcessResult:
-    """Resultado del procesamiento completo."""
+    """Result of the full processing pipeline."""
 
     transactions: list = field(default_factory=list)
     summaries: list = field(default_factory=list)

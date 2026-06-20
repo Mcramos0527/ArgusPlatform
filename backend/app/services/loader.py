@@ -1,6 +1,6 @@
 # app/services/loader.py
-# Servicio de carga de archivos Excel del cliente Delfabro.
-# Lee los 3 archivos y los deja disponibles para el resto del pipeline.
+# Excel file loading service for the Delfabro client.
+# Reads the 3 input files and makes them available to the rest of the pipeline.
 
 import logging
 from pathlib import Path
@@ -14,7 +14,7 @@ logger = logging.getLogger("argus.loader")
 
 
 class ExcelLoader:
-    """Carga y valida los tres archivos Excel del proceso Delfabro."""
+    """Loads and validates the three Excel files for the Delfabro process."""
 
     def __init__(self):
         self.wb_movimientos: Optional[openpyxl.Workbook] = None
@@ -22,10 +22,10 @@ class ExcelLoader:
         self.wb_caja: Optional[openpyxl.Workbook] = None
         self._paths: Dict[str, Path] = {}
 
-    # ── Carga ────────────────────────────────────────────────────────────────
+    # ── Loading ──────────────────────────────────────────────────────────────
 
     def load_movimientos(self, path: str) -> Tuple[bool, str]:
-        """Carga el archivo de Movimientos Diarios Bancarios."""
+        """Load the Daily Bank Transactions file."""
         try:
             p = Path(path)
             if not p.exists():
@@ -33,44 +33,44 @@ class ExcelLoader:
             self.wb_movimientos = load_workbook(p, read_only=True, data_only=True)
             self._paths["movimientos"] = p
             detected = self._detect_bank_sheets()
-            logger.info(f"Movimientos cargado: {p.name} — {len(detected)} pestañas bancarias")
+            logger.info(f"Movimientos loaded: {p.name} — {len(detected)} bank sheets")
             return True, f"OK — {len(detected)} cuentas detectadas"
         except Exception as e:
-            logger.error(f"Error cargando movimientos: {e}")
+            logger.error(f"Error loading movimientos: {e}")
             return False, f"Error: {e}"
 
     def load_saldos(self, path: str) -> Tuple[bool, str]:
-        """Carga el archivo de Saldos del Día."""
+        """Load the Daily Balances file."""
         try:
             p = Path(path)
             if not p.exists():
                 return False, f"Archivo no encontrado: {path}"
             self.wb_saldos = load_workbook(p, read_only=True, data_only=True)
             self._paths["saldos"] = p
-            logger.info(f"Saldos cargado: {p.name}")
+            logger.info(f"Saldos loaded: {p.name}")
             return True, "OK"
         except Exception as e:
-            logger.error(f"Error cargando saldos: {e}")
+            logger.error(f"Error loading saldos: {e}")
             return False, f"Error: {e}"
 
     def load_caja(self, path: str) -> Tuple[bool, str]:
-        """Carga el archivo de Caja Fábrica Digital."""
+        """Load the Caja Fábrica Digital file."""
         try:
             p = Path(path)
             if not p.exists():
                 return False, f"Archivo no encontrado: {path}"
             self.wb_caja = load_workbook(p, read_only=True, data_only=True)
             self._paths["caja"] = p
-            logger.info(f"Caja cargado: {p.name}")
+            logger.info(f"Caja loaded: {p.name}")
             return True, "OK"
         except Exception as e:
-            logger.error(f"Error cargando caja: {e}")
+            logger.error(f"Error loading caja: {e}")
             return False, f"Error: {e}"
 
-    # ── Detección de pestañas ─────────────────────────────────────────────────
+    # ── Sheet detection ───────────────────────────────────────────────────────
 
     def _detect_bank_sheets(self) -> List[str]:
-        """Retorna las pestañas bancarias conocidas que existen en el workbook."""
+        """Return the known bank sheets that exist in the workbook."""
         if not self.wb_movimientos:
             return []
         available = set(self.wb_movimientos.sheetnames)
@@ -78,33 +78,33 @@ class ExcelLoader:
         found = [s for s in self.wb_movimientos.sheetnames if s in known]
         unknown_new = available - known - NON_BANK_SHEETS
         if unknown_new:
-            logger.warning(f"Pestañas desconocidas (no se procesarán): {unknown_new}")
+            logger.warning(f"Unknown sheets (will not be processed): {unknown_new}")
         return found
 
     def get_bank_sheets(self) -> List[str]:
-        """Lista de pestañas bancarias detectadas."""
+        """List of detected bank sheets."""
         return self._detect_bank_sheets()
 
-    # ── Lectura de filas ──────────────────────────────────────────────────────
+    # ── Row reading ──────────────────────────────────────────────────────────
 
     def get_sheet_rows(self, sheet_name: str) -> List[tuple]:
-        """Devuelve todas las filas de una pestaña del workbook de movimientos."""
+        """Return all rows from a sheet in the movimientos workbook."""
         if not self.wb_movimientos:
             return []
         if sheet_name not in self.wb_movimientos.sheetnames:
-            logger.warning(f"Pestaña '{sheet_name}' no encontrada")
+            logger.warning(f"Sheet '{sheet_name}' not found")
             return []
         ws = self.wb_movimientos[sheet_name]
         return list(ws.iter_rows(values_only=True))
 
     def get_categories(self) -> Dict[int, str]:
-        """Lee la tabla de categorías contables y retorna {codigo: nombre}."""
+        """Read the accounting categories table and return {code: name}."""
         cats: Dict[int, str] = {}
         if not self.wb_movimientos:
             return cats
         sheet_name = "CATEGORIAS CONTABLES"
         if sheet_name not in self.wb_movimientos.sheetnames:
-            logger.warning("Pestaña CATEGORIAS CONTABLES no encontrada")
+            logger.warning("Sheet CATEGORIAS CONTABLES not found")
             return cats
         ws = self.wb_movimientos[sheet_name]
         for row in ws.iter_rows(min_row=2, values_only=True):
@@ -115,26 +115,26 @@ class ExcelLoader:
                     cats[code] = name
                 except (ValueError, TypeError):
                     continue
-        logger.info(f"Categorías cargadas: {len(cats)}")
+        logger.info(f"Categories loaded: {len(cats)}")
         return cats
 
     def get_saldos_rows(self) -> List[tuple]:
-        """Devuelve las filas de la pestaña BANCOS DEL DIA."""
+        """Return rows from the BANCOS DEL DIA sheet."""
         if not self.wb_saldos:
             return []
         sheet_name = "BANCOS DEL DIA"
         if sheet_name not in self.wb_saldos.sheetnames:
-            logger.warning("Pestaña BANCOS DEL DIA no encontrada")
+            logger.warning("Sheet BANCOS DEL DIA not found")
             return []
         ws = self.wb_saldos[sheet_name]
         return list(ws.iter_rows(values_only=True))
 
     def get_caja_months(self) -> List[str]:
-        """Devuelve las pestañas de meses disponibles en Caja."""
+        """Return the available month sheets in the Caja workbook."""
         if not self.wb_caja:
             return []
         return [s for s in self.wb_caja.sheetnames if s not in {"acumulado", "Categorías"}]
 
     def is_ready(self) -> bool:
-        """True si los 3 archivos están cargados."""
+        """True if all 3 files are loaded."""
         return all([self.wb_movimientos, self.wb_saldos, self.wb_caja])

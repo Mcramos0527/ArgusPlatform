@@ -1,5 +1,5 @@
 # app/services/exporter.py
-# Genera los archivos Excel de salida de ARGUS.
+# Generates the ARGUS output Excel files.
 
 import logging
 from datetime import date, datetime
@@ -18,18 +18,18 @@ from app.services.reconciler import ReconciliationLine
 
 logger = logging.getLogger("argus.exporter")
 
-# ── Estilos ───────────────────────────────────────────────────────────────────
+# ── Styles ────────────────────────────────────────────────────────────────────
 
 def _header_fill(hex_color: str) -> PatternFill:
     return PatternFill("solid", fgColor=hex_color)
 
 FILL_HEADER_BLUE   = _header_fill("1F4E79")
 FILL_HEADER_GRAY   = _header_fill("404040")
-FILL_DD_SRL        = _header_fill("BDD7EE")   # azul claro DD SRL
-FILL_D_CIA         = _header_fill("FFEB9C")   # amarillo D y CIA
-FILL_COBRO         = _header_fill("E2EFDA")   # verde claro cobro
-FILL_PAGO          = _header_fill("FCE4D6")   # rojo claro pago
-FILL_INTERNO       = _header_fill("EDEDED")   # gris interno
+FILL_DD_SRL        = _header_fill("BDD7EE")   # light blue DD SRL
+FILL_D_CIA         = _header_fill("FFEB9C")   # yellow D y CIA
+FILL_COBRO         = _header_fill("E2EFDA")   # light green income
+FILL_PAGO          = _header_fill("FCE4D6")   # light red expense
+FILL_INTERNO       = _header_fill("EDEDED")   # gray internal
 
 FONT_WHITE_BOLD = Font(bold=True, color="FFFFFF", name="Calibri", size=10)
 FONT_BOLD       = Font(bold=True, name="Calibri", size=10)
@@ -51,7 +51,7 @@ DATE_FORMAT  = 'DD/MM/YYYY'
 
 
 def _set_header_row(ws, headers: list, fill: PatternFill, row: int = 1):
-    """Escribe una fila de encabezados con estilo."""
+    """Write a styled header row."""
     for col, title in enumerate(headers, start=1):
         cell = ws.cell(row=row, column=col, value=title)
         cell.font      = FONT_WHITE_BOLD
@@ -61,7 +61,7 @@ def _set_header_row(ws, headers: list, fill: PatternFill, row: int = 1):
 
 
 def _auto_width(ws, min_w: int = 10, max_w: int = 40):
-    """Ajusta el ancho de columnas automáticamente."""
+    """Auto-fit column widths."""
     for col in ws.columns:
         max_len = 0
         col_letter = get_column_letter(col[0].column)
@@ -74,7 +74,7 @@ def _auto_width(ws, min_w: int = 10, max_w: int = 40):
         ws.column_dimensions[col_letter].width = min(max(max_len + 2, min_w), max_w)
 
 
-# ── Exportador principal ──────────────────────────────────────────────────────
+# ── Main exporter ────────────────────────────────────────────────────────────
 
 class Exporter:
 
@@ -120,14 +120,14 @@ class Exporter:
         logger.info(f"Exported: {path.name}")
         return [str(path)]
 
-    # ── Archivo 1: Movimientos normalizados ───────────────────────────────────
+    # ── File 1: Normalized transactions ──────────────────────────────────────
 
     def _export_transactions(self, transactions: List[Transaction], path: Path):
         wb = Workbook()
         ws = wb.active
         ws.title = "Movimientos"
 
-        # Cabecera ARGUS
+        # ARGUS title header
         ws.merge_cells("A1:T1")
         title_cell = ws["A1"]
         title_cell.value     = "ARGUS — Movimientos Normalizados"
@@ -164,12 +164,12 @@ class Exporter:
                 cell.font   = FONT_NORMAL
                 cell.border = THIN_BORDER
 
-                # Formato numérico
-                if col_idx in (8, 9, 10, 11):  # débito, crédito, neto, saldo
+                # Number format
+                if col_idx in (8, 9, 10, 11):  # debit, credit, net, balance
                     cell.number_format = PESO_FORMAT
                     cell.alignment     = ALIGN_RIGHT
 
-                # Formato fecha
+                # Date format
                 if col_idx in (4, 5):
                     cell.number_format = DATE_FORMAT
                     cell.alignment     = ALIGN_CENTER
@@ -192,7 +192,7 @@ class Exporter:
                     cell.font = Font(name="Calibri", size=10, bold=True, color="FFFFFF")
                     cell.alignment = ALIGN_LEFT
 
-                # Color por empresa en columna empresa
+                # Color by company in the company column
                 if col_idx == 2:
                     if "Dario" in (tx.empresa or ""):
                         cell.fill = FILL_DD_SRL
@@ -202,14 +202,14 @@ class Exporter:
         _auto_width(ws)
         wb.save(path)
 
-    # ── Archivo 2: Resumen bancario ───────────────────────────────────────────
+    # ── File 2: Bank summary ─────────────────────────────────────────────────
 
     def _export_summary(self, summaries: List[BankSummary], path: Path):
         wb = Workbook()
         ws = wb.active
         ws.title = "Bancos del Día"
 
-        # Título
+        # Title
         ws.merge_cells("A1:H1")
         c = ws["A1"]
         c.value     = f"ARGUS — Resumen Bancario del Día  |  Generado: {date.today().strftime('%d/%m/%Y')}"
@@ -230,7 +230,7 @@ class Exporter:
         row_idx = 3
 
         for s in summaries:
-            # Separador de empresa
+            # Company separator row
             if s.empresa != current_company:
                 current_company = s.empresa
                 ws.merge_cells(f"A{row_idx}:H{row_idx}")
@@ -259,7 +259,7 @@ class Exporter:
 
             row_idx += 1
 
-        # Totales por empresa
+        # Totals by company
         row_idx += 1
         ws.merge_cells(f"A{row_idx}:B{row_idx}")
         ws.cell(row=row_idx, column=1, value="TOTAL GENERAL").font = FONT_BOLD
@@ -310,9 +310,9 @@ class Exporter:
         ws.freeze_panes = "A3"
 
         # Status fills
-        fill_ok      = _header_fill("E2EFDA")   # green  — CONCILIADO
-        fill_banco   = _header_fill("FFF2CC")   # yellow — PENDIENTE BANCO
-        fill_erp     = _header_fill("FCE4D6")   # orange — PENDIENTE ERP
+        fill_ok      = _header_fill("E2EFDA")   # green  — RECONCILED
+        fill_banco   = _header_fill("FFF2CC")   # yellow — PENDING BANK
+        fill_erp     = _header_fill("FCE4D6")   # orange — PENDING ERP
 
         status_fills = {
             "CONCILIADO":      (fill_ok,    "375623"),
@@ -413,9 +413,9 @@ class Exporter:
         _set_header_row(ws, headers, FILL_HEADER_BLUE, row=2)
         ws.freeze_panes = "A3"
 
-        fill_critical = _header_fill("FCE4D6")  # red-tint   — CRITICAL
-        fill_alert    = _header_fill("FFF2CC")  # yellow-tint — ALERT
-        fill_ok       = _header_fill("E2EFDA")  # green-tint  — OK
+        fill_critical = _header_fill("FCE4D6")  # red tint    — CRITICAL
+        fill_alert    = _header_fill("FFF2CC")  # yellow tint — ALERT
+        fill_ok       = _header_fill("E2EFDA")  # green tint  — OK
 
         status_styles = {
             "CRITICAL": (fill_critical, "9C0006"),
@@ -447,7 +447,7 @@ class Exporter:
                 if col_idx in (3, 4, 5):
                     cell.number_format = PESO_FORMAT
                     cell.alignment     = ALIGN_RIGHT
-                if col_idx == 6:   # VARIANZA %
+                if col_idx == 6:   # VARIANCE %
                     cell.number_format = '0.00%'
                     cell.alignment     = ALIGN_RIGHT
                 if col_idx in (1, 7, 8):
@@ -476,7 +476,7 @@ class Exporter:
         _auto_width(ws)
         wb.save(path)
 
-    # ── Archivo 3: Export Caja ─────────────────────────────────────────────────
+    # ── File 3: Cash register export ─────────────────────────────────────────
 
     def _export_caja(self, entries: List[CajaEntry], path: Path):
         wb = Workbook()

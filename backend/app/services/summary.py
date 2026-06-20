@@ -1,6 +1,6 @@
 # app/services/summary.py
-# Genera el resumen bancario diario (replica la lógica de BANCOS DEL DIA)
-# y las entradas para CAJA FÁBRICA DIGITAL.
+# Generates the daily bank summary (replicates the BANCOS DEL DIA logic)
+# and the entries for CAJA FÁBRICA DIGITAL.
 
 import logging
 from datetime import date
@@ -11,14 +11,14 @@ from app.config import SHEET_CONFIG
 
 logger = logging.getLogger("argus.summary")
 
-# Categorías que representan gastos bancarios (para la columna GASTOS DEL DIA)
+# Categories representing bank fees (for the GASTOS DEL DIA column)
 BANK_EXPENSE_CATEGORIES = {17}   # 17 = GASTOS BANCOS
-INTEREST_CATEGORIES     = {29}   # 29 = INTERESES GANADOS (también 3 = DEUDA para intereses pagados)
-BANK_FEE_CATEGORIES     = {17, 19}  # gastos e impuestos
+INTEREST_CATEGORIES     = {29}   # 29 = INTERESES GANADOS (also 3 = DEUDA for interest paid)
+BANK_FEE_CATEGORIES     = {17, 19}  # fees and taxes
 
 
 class SummaryGenerator:
-    """Genera resúmenes bancarios diarios y entradas de caja."""
+    """Generates daily bank summaries and cash register entries."""
 
     def generate_bank_summaries(
         self,
@@ -26,13 +26,13 @@ class SummaryGenerator:
         reference_date: Optional[date] = None,
     ) -> List[BankSummary]:
         """
-        Genera un BankSummary por cada cuenta bancaria.
-        Si reference_date es None, usa el día con más transacciones.
+        Generate one BankSummary per bank account.
+        If reference_date is None, uses the day with the most transactions.
         """
         if not transactions:
             return []
 
-        # Agrupar por pestaña
+        # Group by sheet
         by_sheet: Dict[str, List[Transaction]] = {}
         for tx in transactions:
             by_sheet.setdefault(tx.pestaña, []).append(tx)
@@ -42,16 +42,16 @@ class SummaryGenerator:
         for sheet_name, txs in by_sheet.items():
             cfg = SHEET_CONFIG.get(sheet_name, {})
 
-            # Calcular el día de referencia
+            # Determine the reference day
             if reference_date:
                 ref = reference_date
             else:
                 ref = self._most_recent_date(txs)
 
-            # Filtrar transacciones del día de referencia
+            # Filter transactions for the reference day
             day_txs = [tx for tx in txs if tx.fecha == ref] if ref else txs
 
-            # Último saldo disponible (mayor fecha)
+            # Latest available balance (most recent date)
             last_tx = max(
                 (tx for tx in txs if tx.saldo != 0),
                 key=lambda t: t.fecha or date.min,
@@ -92,13 +92,13 @@ class SummaryGenerator:
             )
             summaries.append(summary)
 
-        # Ordenar: primero DD SRL, luego D y CIA
+        # Sort: DD SRL first, then D y CIA
         summaries.sort(key=lambda s: (
             0 if "Dario" in s.empresa else 1,
             s.banco
         ))
 
-        logger.info(f"Resúmenes generados: {len(summaries)} cuentas")
+        logger.info(f"Summaries generated: {len(summaries)} accounts")
         return summaries
 
     def generate_caja_entries(
@@ -107,8 +107,8 @@ class SummaryGenerator:
         reference_date: Optional[date] = None,
     ) -> List[CajaEntry]:
         """
-        Genera entradas para CAJA FÁBRICA DIGITAL.
-        Extrae gastos bancarios y movimientos significativos del día.
+        Generate entries for CAJA FÁBRICA DIGITAL.
+        Extracts bank fees and significant movements for the day.
         """
         if not transactions:
             return []
@@ -118,7 +118,7 @@ class SummaryGenerator:
         else:
             ref = self._most_recent_date(transactions)
 
-        # Filtrar solo del día de referencia y solo movimientos con categoría
+        # Filter to reference day only, and only movements with a category
         day_txs = [
             tx for tx in transactions
             if (tx.fecha == ref or ref is None)
@@ -141,17 +141,17 @@ class SummaryGenerator:
             )
             entries.append(entry)
 
-        logger.info(f"Entradas de caja generadas: {len(entries)}")
+        logger.info(f"Cash register entries generated: {len(entries)}")
         return entries
 
     def _most_recent_date(self, txs: List[Transaction]) -> Optional[date]:
-        """Retorna la fecha más reciente con transacciones."""
+        """Return the most recent date that has transactions."""
         dates = [tx.fecha for tx in txs if tx.fecha is not None]
         return max(dates) if dates else None
 
 
 def _infer_canal(tx: Transaction) -> str:
-    """Infiere el canal de pago desde la descripción si no está disponible."""
+    """Infer the payment channel from the description if not available."""
     desc = (tx.descripcion or "").upper()
     if "TRANSFER" in desc or "TRANSFERENCIA" in desc:
         return "Transfer"

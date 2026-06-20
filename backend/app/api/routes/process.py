@@ -93,7 +93,7 @@ def _error_event(msg: str) -> str:
     return json.dumps({"type": "error", "msg": msg})
 
 
-# ── Paso 1: Movimientos Bancarios ─────────────────────────────────────────────
+# ── Step 1: Bank Transactions ────────────────────────────────────────────────
 
 @router.post("/paso1")
 async def proceso_paso1(
@@ -105,7 +105,7 @@ async def proceso_paso1(
     """
     run_id = str(uuid.uuid4())
 
-    # Save uploaded file to a temp directory
+    # Save uploaded file to a temporary directory
     tmp_dir = tempfile.mkdtemp(prefix=f"argus_{run_id}_")
     input_path = str(Path(tmp_dir) / "movimientos.xlsx")
     output_folder = str(Path(tmp_dir) / "output")
@@ -170,7 +170,7 @@ async def proceso_paso1(
         try:
             result = await future
         except Exception as exc:
-            logger.exception("Paso 1 pipeline error")
+            logger.exception("Step 1 pipeline error")
             queries.update_run(run_id, {"status": "error"})
             yield _error_event(f"Error en pipeline: {exc}")
             return
@@ -240,7 +240,7 @@ async def proceso_paso1(
     return EventSourceResponse(event_generator())
 
 
-# ── Paso 2: ERP Reconciliation ────────────────────────────────────────────────
+# ── Step 2: ERP Reconciliation ───────────────────────────────────────────────
 
 @router.post("/paso2/{run_id}")
 async def proceso_paso2(
@@ -313,7 +313,7 @@ async def proceso_paso2(
         try:
             result = await future
         except Exception as exc:
-            logger.exception("Paso 2 pipeline error")
+            logger.exception("Step 2 pipeline error")
             queries.update_run(run_id, {"status": "error"})
             yield _error_event(f"Error en pipeline: {exc}")
             return
@@ -368,7 +368,7 @@ async def proceso_paso2(
     return EventSourceResponse(event_generator())
 
 
-# ── Control: Caja Dirección ───────────────────────────────────────────────────
+# ── Control: Caja Dirección ──────────────────────────────────────────────────
 
 @router.post("/control/{run_id}")
 async def proceso_control(
@@ -464,7 +464,7 @@ async def proceso_control(
     return EventSourceResponse(event_generator())
 
 
-# ── Paso 3: Caja Fábrica Digital ─────────────────────────────────────────────
+# ── Step 3: Caja Fábrica Digital ─────────────────────────────────────────────
 
 @router.post("/paso3/{run_id}")
 async def proceso_paso3(
@@ -531,7 +531,7 @@ async def proceso_paso3(
         try:
             result = await future
         except Exception as exc:
-            logger.exception("Paso 3 pipeline error")
+            logger.exception("Step 3 pipeline error")
             queries.update_run(run_id, {"status": "error"})
             yield _error_event(f"Error en pipeline: {exc}")
             return

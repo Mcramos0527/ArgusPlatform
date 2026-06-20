@@ -16,7 +16,7 @@ WINDOW_SIZE = "1040x700"
 # Keys:
 #   company    : company that owns the account
 #   bank       : display bank name
-#   header_row : 1-based row with column headers
+#   header_row : 1-based row index of the column header row
 #   data_row   : 1-based first row with actual transaction data
 #   format     : normalizer key
 #   columns    : original_header → normalized_field
@@ -146,9 +146,9 @@ SHEET_CONFIG: Dict[str, Dict[str, Any]] = {
         "company": "Dario A. Delfabro S.R.L.",
         "bank": "Cresium",
         "header_row": 5,
-        "data_row": 8,   # Cresium has blank rows 6-7, data starts at row 8
+        "data_row": 8,   # Cresium has blank rows 6–7, data starts at row 8
         "format": "CRESIUM",
-        # Cresium: single signed Monto column. Last col IMPUESTO is ignored for now.
+        # Cresium: single signed Monto column. IMPUESTO column is ignored for now.
         "columns": {
             "FECHA DE ENVIO":    "fecha",
             "MOVIMIENTO":        "descripcion",
@@ -159,7 +159,7 @@ SHEET_CONFIG: Dict[str, Dict[str, Any]] = {
             "CATEGORÍA DE TRANSACCIÓN": "tipo_concepto",
             "MOTIVO":            "cod_concepto",
             "CATEGORÍA":         "categoria_codigo",
-            # "IMPUESTO AL DÉBITO / LEY N 25.413" — ignored for now (future Wave)
+            # "IMPUESTO AL DÉBITO / LEY N 25.413" — ignored for now (future wave)
         },
     },
 
@@ -256,7 +256,7 @@ SHEET_CONFIG: Dict[str, Dict[str, Any]] = {
             "Tipo operación":       "tipo_concepto",
             "Comprobante":          "nro_referencia",
             "Descripción":          "descripcion",
-            "Débito":               "debito_raw",   # always positive — inverted in normalizer
+                "Débito":               "debito_raw",   # always positive — inverted in normalizer
             "Crédito":              "credito_raw",  # always positive
             "Descripción Completa": "detalle",
             "CATEGORÍA":            "categoria_codigo",
@@ -264,7 +264,7 @@ SHEET_CONFIG: Dict[str, Dict[str, Any]] = {
     },
 }
 
-# Sheets that are NOT bank accounts — skipped during parsing
+# Sheets that are not bank accounts — skipped during parsing
 NON_BANK_SHEETS = {
     "CONCILICIACION", "CONCILIACION",
     "CATEGORIAS CONTABLES", "Explicacion"
@@ -272,9 +272,9 @@ NON_BANK_SHEETS = {
 
 # ── Category classification rules ────────────────────────────────────────────
 
-# Income categories: money ENTERS the company (COBRO)
+# Income categories: money enters the company (COBRO)
 # Categories 25-30 are income. All others (1-24, 31-38) are expenses.
-# Exception: 39 = INTERNAL TRANSFER (money moves between accounts, not in/out)
+# Exception: 39 = INTERNAL TRANSFER (money moves between accounts, not in or out)
 INCOME_CATEGORIES  = {25, 26, 27, 28, 29, 30}
 EXPENSE_CATEGORIES = set(range(1, 25)) | set(range(31, 39))  # 1-24 + 31-38
 INTERNAL_CATEGORY  = 39
