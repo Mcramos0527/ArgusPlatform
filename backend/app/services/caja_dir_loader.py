@@ -22,7 +22,7 @@ logger = logging.getLogger("argus.caja_dir")
 # Standard column name aliases (case-insensitive exact match after strip)
 _FECHA_NAMES     = {"fecha", "date", "fecha_movimiento", "fecha_mov", "fecha mov"}
 _CATEGORIA_NAMES = {"tipo", "categoria", "categoría", "concepto", "descripcion",
-                    "descripción", "rubro", "nro tipo"}
+                    "descripción", "rubro"}
 _IMPORTE_NAMES   = {"importe", "monto", "amount", "total", "haber", "debe"}
 _CANAL_NAMES     = {"canal", "channel", "tipo_canal", "tipo canal"}
 
