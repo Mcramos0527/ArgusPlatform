@@ -37,25 +37,32 @@ _PRIORITY_COLS: Dict[str, str] = {
 def _detect_columns(header_row: tuple) -> Dict[str, int]:
     """Map logical field names to column indices from a header tuple."""
     mapping: Dict[str, int] = {}
+    # Tracks fields already claimed by a priority column so duplicate tables
+    # (e.g. the same header appearing twice in one sheet) don't overwrite the
+    # first — correct — occurrence.
+    priority_mapped: set = set()
 
     for idx, cell in enumerate(header_row):
         if cell is None:
             continue
         name = str(cell).strip().lower()
 
-        # Priority overrides always win, even if the field was already mapped
+        # Priority columns override generic aliases but only on first occurrence.
         if name in _PRIORITY_COLS:
-            mapping[_PRIORITY_COLS[name]] = idx
+            field = _PRIORITY_COLS[name]
+            if field not in priority_mapped:
+                mapping[field] = idx
+                priority_mapped.add(field)
             continue
 
-        # Standard aliases — first match wins
+        # Standard aliases — first match wins (only if not already set by priority)
         if name in _FECHA_NAMES and "fecha" not in mapping:
             mapping["fecha"] = idx
         if name in _CATEGORIA_NAMES and "categoria" not in mapping:
             mapping["categoria"] = idx
-        if name in _IMPORTE_NAMES and "importe" not in mapping:
+        if name in _IMPORTE_NAMES and "importe" not in mapping and "importe" not in priority_mapped:
             mapping["importe"] = idx
-        if name in _CANAL_NAMES and "canal" not in mapping:
+        if name in _CANAL_NAMES and "canal" not in mapping and "canal" not in priority_mapped:
             mapping["canal"] = idx
 
     return mapping
